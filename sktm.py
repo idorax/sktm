@@ -30,6 +30,7 @@ def setup_parser():
     parser.add_argument("--jlogin", help="Jenkins login")
     parser.add_argument("--jpass", help="Jenkins password")
     parser.add_argument("--jjname", help="Jenkins job name")
+    parser.add_argument("--makeopts", help="Specify options for make")
     subparsers = parser.add_subparsers()
 
     parser_baseline = subparsers.add_parser("baseline")
@@ -93,7 +94,7 @@ if __name__ == '__main__':
     logging.debug("cfg=%s", cfg)
 
     sw = sktm.watcher(cfg.get("jurl"), cfg.get("jlogin"), cfg.get("jpass"),
-                      cfg.get("jjname"), cfg.get("db"))
+                      cfg.get("jjname"), cfg.get("db"), cfg.get("makeopts"))
 
     args.func(sw, cfg)
     try:

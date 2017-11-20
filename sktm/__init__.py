@@ -34,11 +34,12 @@ class jtype(enum.IntEnum):
 
 class watcher(object):
     def __init__(self, jenkinsurl, jenkinslogin, jenkinspassword,
-                 jenkinsjobname, dbpath):
+                 jenkinsjobname, dbpath, makeopts = None):
         self.db = sktm.db.skt_db(os.path.expanduser(dbpath))
         self.jk = sktm.jenkins.skt_jenkins(jenkinsurl, jenkinslogin,
                                            jenkinspassword)
         self.jobname = jenkinsjobname
+        self.makeopts = makeopts
         self.pj = list()
         self.pw = list()
 
@@ -70,7 +71,8 @@ class watcher(object):
                         self.jk.build(self.jobname,
                                       baserepo = self.baserepo,
                                       ref = self.baseref,
-                                      baseconfig = self.cfgurl)))
+                                      baseconfig = self.cfgurl,
+                                      makeopts = self.makeopts)))
 
     def check_patchwork(self):
         stablecommit = self.db.get_stable(self.baserepo)
@@ -99,7 +101,8 @@ class watcher(object):
                                               ref = stablecommit,
                                               baseconfig = self.cfgurl,
                                               patchwork = patchset,
-                                              emails = emails)))
+                                              emails = emails,
+                                              makeopts = self.makeopts)))
                 logging.info("submitted patchset: %s", patchset)
                 logging.debug("emails: %s", emails)
 

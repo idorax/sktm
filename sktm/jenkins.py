@@ -96,7 +96,7 @@ class skt_jenkins(object):
         return sktm.tresult.TEST_FAILURE
 
     def build(self, jobname, baserepo = None, ref = None, baseconfig = None,
-              patchwork = [], emails = set()):
+              patchwork = [], emails = set(), makeopts = None):
         params = dict()
         if baserepo != None:
             params["baserepo"] = baserepo
@@ -106,6 +106,9 @@ class skt_jenkins(object):
 
         if baseconfig != None:
             params["baseconfig"] = baseconfig
+
+        if makeopts != None:
+            params["makeopts"] = makeopts
 
         if len(patchwork) > 0:
             params["patchwork"] = " ".join(patchwork)
