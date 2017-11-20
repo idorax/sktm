@@ -33,6 +33,8 @@ class skt_db(object):
         c = tc.cursor()
 
         c.executescript("""
+                PRAGMA foreign_keys = on;
+
                 CREATE TABLE baserepo(
                   id INTEGER PRIMARY KEY,
                   url TEXT UNIQUE
@@ -63,8 +65,7 @@ class skt_db(object):
                 CREATE TABLE testrun(
                   id INTEGER PRIMARY KEY,
                   result_id INTEGER,
-                  build_id INTEGER,
-                  FOREIGN KEY(result_id) REFERENCES result(id)
+                  build_id INTEGER
                 );
 
                 CREATE TABLE baseline(
