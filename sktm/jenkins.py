@@ -132,7 +132,8 @@ class skt_jenkins(object):
 
     def _params_eq(self, build, params):
         result = True
-        if build == None or build.get_actions() == None:
+        if build == None or build.get_actions() == None or \
+                build.get_actions().get("parameters") == None:
             return False
 
         for param in build.get_actions().get("parameters"):
