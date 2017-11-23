@@ -21,8 +21,9 @@ class skt_patchwork(object):
             "\[[^\]]*iproute.*?\]",
             "\[[^\]]*pktgen.*?\]",
             "\[[^\]]*ethtool.*?\]",
-            "\[git\]",
-            "pull request"
+            "\[[^\]]*git.*?\]",
+            "\[[^\]]*pull.*?\]",
+            "pull.request"
     ]
 
     def __init__(self, baseurl, projectname, lastpatch):
