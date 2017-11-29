@@ -77,13 +77,14 @@ class skt_patchwork(object):
         print "emails=%s\n" % self.get_patch_emails(pid)
 
     def get_projectid(self, projectname):
-        plist = self.rpc.project_list(projectname, 1)
-        if len(plist) > 0:
-            pid = plist[0].get("id")
-            logging.debug("%s -> %d", projectname, pid)
-            return pid
-        else:
-            raise Exception("Couldn't find project %s" % projectname)
+        plist = self.rpc.project_list(projectname)
+        for project in plist:
+            if project.get("name") == projectname:
+                pid = project.get("id")
+                logging.debug("%s -> %d", projectname, pid)
+                return pid
+
+        raise Exception("Couldn't find project %s" % projectname)
 
     def parse_patch(self, patch):
         pid = patch.get("id")
