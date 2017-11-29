@@ -79,7 +79,7 @@ class skt_patchwork(object):
     def get_projectid(self, projectname):
         plist = self.rpc.project_list(projectname)
         for project in plist:
-            if project.get("name") == projectname:
+            if project.get("linkname") == projectname:
                 pid = project.get("id")
                 logging.debug("%s -> %d", projectname, pid)
                 return pid
