@@ -31,12 +31,12 @@ def setup_parser():
     parser.add_argument("--jpass", help="Jenkins password")
     parser.add_argument("--jjname", help="Jenkins job name")
     parser.add_argument("--makeopts", help="Specify options for make")
+    parser.add_argument("--cfgurl", type=str, help="Kernel config URL")
     subparsers = parser.add_subparsers()
 
     parser_baseline = subparsers.add_parser("baseline")
     parser_baseline.add_argument("repo", type=str, help="Base repo URL")
     parser_baseline.add_argument("ref", type=str, help="Base repo ref to test")
-    parser_baseline.add_argument("--cfgurl", type=str, help="Kernel config URL")
     parser_baseline.set_defaults(func=cmd_baseline)
 
     parser_patchwork = subparsers.add_parser("patchwork")
@@ -44,7 +44,6 @@ def setup_parser():
     parser_patchwork.add_argument("baseurl", type=str, help="Base URL")
     parser_patchwork.add_argument("project", type=str, help="Project name")
     parser_patchwork.add_argument("--lastpatch", type=str, help="Last patch id")
-    parser_patchwork.add_argument("--cfgurl", type=str, help="Kernel config URL")
     parser_patchwork.set_defaults(func=cmd_patchwork)
 
     parser_testinfo = subparsers.add_parser("testinfo")
