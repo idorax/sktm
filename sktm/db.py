@@ -153,7 +153,7 @@ class skt_db(object):
             patchlist.append(res[0])
 
         if len(patchlist):
-            logging.info("expired pending patches for %s/%d: %s", baseurl,
+            logging.info("expired pending patches for %s (%d): %s", baseurl,
                          projid, patchlist)
 
         return patchlist

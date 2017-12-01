@@ -45,7 +45,13 @@ class skt_patchwork(object):
         logging.info("%d: %s", pid, pname)
 
     def get_patch_by_id(self, pid):
-        return self.rpc.patch_get(pid)
+        patch = self.rpc.patch_get(pid)
+
+        if patch == None or patch == {}:
+            logging.warning("Failed to get data for patch %d", pid)
+            patch = None
+
+        return patch
 
     def get_patch_emails(self, pid):
         emails = set()
@@ -170,6 +176,9 @@ class skt_patchwork(object):
         logging.debug("get_patchsets: %s", patchlist)
         for pid in patchlist:
             patch = self.get_patch_by_id(pid)
+            if patch == None:
+                continue
+
             pset = self.parse_patch(patch)
             if pset != None:
                 patchsets.append(pset)
