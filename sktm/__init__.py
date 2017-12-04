@@ -140,6 +140,8 @@ class watcher(object):
                             pw = sktm.patchwork.skt_patchwork(baseurl, None,
                                                               pid)
                             patch = pw.get_patch_by_id(pid)
+                            if patch == None:
+                                continue
                             logging.info("patch=%s", patch)
                             patches.append((pid, patch.get("name"), purl,
                                             baseurl,patch.get("project_id")))
