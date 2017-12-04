@@ -147,7 +147,18 @@ class skt_jenkins(object):
     def find_build(self, jobname, params, eid = None):
         job = self.server.get_job(jobname)
 
-        lbuild = job.get_last_build()
+        try:
+            lbuild = job.get_last_build()
+        except jenkinsapi.custom_exceptions.NoBuildData:
+            lbuild = None
+
+        while lbuild == None:
+            time.sleep(1)
+            try:
+                lbuild = job.get_last_build()
+            except jenkinsapi.custom_exceptions.NoBuildData:
+                lbuild = None
+
         if eid != None:
             while lbuild.get_number() < eid:
                 time.sleep(1)
