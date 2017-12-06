@@ -105,7 +105,7 @@ class skt_patchwork(object):
 
         emails = self.get_patch_emails(pid)
 
-        smatch = re.search("\[.*?(\d+)/(\d+)\]", pname)
+        smatch = re.search("\[.*?(\d+)/(\d+).*?\]", pname)
         if smatch:
             cpatch = int(smatch.group(1))
             mpatch = int(smatch.group(2))
