@@ -144,7 +144,8 @@ class watcher(object):
                                 continue
                             logging.info("patch=%s", patch)
                             patches.append((pid, patch.get("name"), purl,
-                                            baseurl,patch.get("project_id")))
+                                            baseurl, patch.get("project_id"),
+                                            patch.get("date").replace(" ", "T")))
                         else:
                             raise Exception("Malfomed patch url: %s" % purl)
 

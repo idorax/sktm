@@ -50,6 +50,7 @@ class skt_db(object):
                   id INTEGER PRIMARY KEY,
                   name TEXT,
                   url TEXT,
+                  date TEXT,
                   patchsource_id INTEGER,
                   series_id INTEGER,
                   FOREIGN KEY(patchsource_id) REFERENCES patchsource(id)
@@ -260,7 +261,7 @@ class skt_db(object):
         testrunid = self.commit_testrun(result, buildid)
         seriesid = self.commit_series(patches)
 
-        for (pid, pname, purl, baseurl, projid) in patches:
+        for (pid, pname, purl, baseurl, projid, pdate) in patches:
             # TODO: Can accumulate per-project list instead of doing it one by
             # one
             self.unset_patchset_pending(baseurl, projid, [pid])
@@ -284,13 +285,13 @@ class skt_db(object):
 
         return testrunid
 
-    def commit_patch(self, pid, pname, purl, sid, baseurl, projid):
+    def commit_patch(self, pid, pname, purl, sid, baseurl, projid, pdate):
         logging.debug("commit_patch: pid=%s; sid=%s", pid, sid)
         sourceid = self.get_sourceid(baseurl, projid)
         self.cur.execute('INSERT OR REPLACE INTO \
-                          patch(id, name, url, patchsource_id, series_id) \
-                          VALUES(?,?,?,?,?)',
-                         (pid, pname, purl, sourceid, sid))
+                          patch(id, name, url, patchsource_id, series_id, date) \
+                          VALUES(?,?,?,?,?,?)',
+                         (pid, pname, purl, sourceid, sid, pdate))
         self.conn.commit()
 
     def commit_series(self, patches):
@@ -302,9 +303,10 @@ class skt_db(object):
         if res != None:
              seriesid = 1 + res[0]
 
-        for (pid, pname, purl, baseurl, projid) in patches:
+        for (pid, pname, purl, baseurl, projid, pdate) in patches:
             sourceid = self.get_sourceid(baseurl, projid)
-            self.commit_patch(pid, pname, purl, seriesid, baseurl, projid)
+            self.commit_patch(pid, pname, purl, seriesid, baseurl, projid,
+                              pdate)
 
         self.conn.commit()
 
