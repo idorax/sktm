@@ -43,7 +43,9 @@ def setup_parser():
     parser_patchwork.add_argument("repo", type=str, help="Base repo URL")
     parser_patchwork.add_argument("baseurl", type=str, help="Base URL")
     parser_patchwork.add_argument("project", type=str, help="Project name")
-    parser_patchwork.add_argument("--lastpatch", type=str, help="Last patch id")
+    parser_patchwork.add_argument("--lastpatch", type=str, help="Last patch (id for pw1; datetime for pw2)")
+    parser_patchwork.add_argument("--restapi", help="Use REST API",
+                                  action = "store_true", default = False)
     parser_patchwork.set_defaults(func=cmd_patchwork)
 
     parser_testinfo = subparsers.add_parser("testinfo")
@@ -65,6 +67,7 @@ def cmd_patchwork(sw, cfg):
     logging.info("checking patchwork: %s [%s]", cfg.get("repo"),
                  cfg.get("project"))
     sw.set_baseline(cfg.get("repo"), cfgurl = cfg.get("cfgurl"))
+    sw.set_restapi(cfg.get("restapi"))
     sw.add_pw(cfg.get("baseurl"), cfg.get("project"), cfg.get("lastpatch"))
     sw.check_patchwork()
 

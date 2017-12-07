@@ -42,28 +42,46 @@ class watcher(object):
         self.makeopts = makeopts
         self.pj = list()
         self.pw = list()
+        self.restapi = False
 
     def set_baseline(self, repo, ref = "master", cfgurl = None):
         self.baserepo = repo
         self.baseref = ref
         self.cfgurl = cfgurl
 
+    def set_restapi(self, restapi = False):
+        self.restapi = restapi
+
     def cleanup(self):
         for (pjt, bid) in self.pj:
             logging.warning("Quiting before job completion: %d/%d", bid, pjt)
 
     def add_pw(self, baseurl, pname, lpatch = None):
-        pw = sktm.patchwork.skt_patchwork(baseurl, pname,
-                                          int(lpatch) if lpatch else None)
+        if self.restapi:
+            pw = sktm.patchwork.skt_patchwork2(baseurl, pname, lpatch)
 
-        if lpatch == None:
-            lcpatch = self.db.get_last_checked_patch(baseurl, pw.projectid)
-            lppatch = self.db.get_last_pending_patch(baseurl, pw.projectid)
-            lpatch = max(lcpatch, lppatch)
             if lpatch == None:
-                raise Exception("%s project: %s was never tested before, please provide initial patch id" %
-                                (baseurl, pid))
-            pw.lastpatch = lpatch
+                lcdate = self.db.get_last_checked_patch_date(baseurl,
+                                                             pw.projectid)
+                lpdate = self.db.get_last_pending_patch_date(baseurl,
+                                                             pw.projectid)
+                since = max(lcdate, lpdate)
+                if since == None:
+                    raise Exception("%s project: %s was never tested before, please provide initial patch id" %
+                                    (baseurl, pname))
+                pw.since = since
+        else:
+            pw = sktm.patchwork.skt_patchwork(baseurl, pname,
+                                              int(lpatch) if lpatch else None)
+
+            if lpatch == None:
+                lcpatch = self.db.get_last_checked_patch(baseurl, pw.projectid)
+                lppatch = self.db.get_last_pending_patch(baseurl, pw.projectid)
+                lpatch = max(lcpatch, lppatch)
+                if lpatch == None:
+                    raise Exception("%s project: %s was never tested before, please provide initial patch id" %
+                                    (baseurl, pname))
+                pw.lastpatch = lpatch
         self.pw.append(pw)
 
     def check_baseline(self):
@@ -91,7 +109,9 @@ class watcher(object):
                 for purl in patchset:
                     match = re.match("(.*)/patch/(\d+)$", purl)
                     if match:
-                        pids.append(int(match.group(2)))
+                        pid = int(match.group(2))
+                        patch = cpw.get_patch_by_id(pid)
+                        pids.append((pid, patch.get("date").replace(" ", "T")))
 
                 self.db.set_patchset_pending(cpw.baseurl, cpw.projectid,
                                              pids)
@@ -119,6 +139,8 @@ class watcher(object):
                             bid)
                 elif pjt == sktm.jtype.PATCHWORK:
                     patches = list()
+                    slist = list()
+                    series = None
                     bres = self.jk.get_result(self.jobname, bid)
                     logging.info("result=%s", bres)
                     basehash = self.jk.get_base_hash(self.jobname, bid)
@@ -137,20 +159,38 @@ class watcher(object):
                         if match:
                             baseurl = match.group(1)
                             pid = int(match.group(2))
-                            pw = sktm.patchwork.skt_patchwork(baseurl, None,
-                                                              pid)
+                            if self.restapi:
+                                pw = sktm.patchwork.skt_patchwork2(baseurl,
+                                                                   None,
+                                                                   pid)
+                            else:
+                                pw = sktm.patchwork.skt_patchwork(baseurl,
+                                                                  None,
+                                                                  pid)
                             patch = pw.get_patch_by_id(pid)
                             if patch == None:
                                 continue
-                            logging.info("patch=%s", patch)
+                            logging.info("patch: [%d] %s", pid,
+                                         patch.get("name"))
+                            if self.restapi:
+                                projid = patch.get("project").get("id")
+                                for series in patch.get("series"):
+                                    slist.append(series.get("id"))
+                            else:
+                                projid = patch.get("project_id")
                             patches.append((pid, patch.get("name"), purl,
-                                            baseurl, patch.get("project_id"),
+                                            baseurl, projid,
                                             patch.get("date").replace(" ", "T")))
                         else:
                             raise Exception("Malfomed patch url: %s" % purl)
 
+                    try:
+                        series = max(set(slist), key=slist.count)
+                    except ValueError:
+                        pass
+
                     self.db.commit_patchtest(self.baserepo, basehash, patches,
-                                             bres, bid)
+                                             bres, bid, series)
                 else:
                     raise Exception("Unknown job type: %d" % pjt)
 

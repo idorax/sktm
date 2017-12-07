@@ -58,6 +58,7 @@ class skt_db(object):
 
                 CREATE TABLE pendingpatches(
                   id INTEGER PRIMARY KEY,
+                  pdate TEXT,
                   patchsource_id INTEGER,
                   timestamp INTEGER,
                   FOREIGN KEY(patchsource_id) REFERENCES patchsource(id)
@@ -141,6 +142,26 @@ class skt_db(object):
         res = self.cur.fetchone()
         return None if res == None else res[0]
 
+    def get_last_checked_patch_date(self, baseurl, projid):
+        sourceid = self.get_sourceid(baseurl, projid)
+
+        self.cur.execute('SELECT patch.date FROM patch WHERE \
+                            patchsource_id = ? \
+                            ORDER BY id DESC LIMIT 1',
+                         (sourceid,))
+        res = self.cur.fetchone()
+        return None if res == None else res[0]
+
+    def get_last_pending_patch_date(self, baseurl, projid):
+        sourceid = self.get_sourceid(baseurl, projid)
+
+        self.cur.execute('SELECT pdate FROM pendingpatches WHERE \
+                            patchsource_id = ? \
+                            ORDER BY id DESC LIMIT 1',
+                         (sourceid,))
+        res = self.cur.fetchone()
+        return None if res == None else res[0]
+
     def get_expired_pending_patches(self, baseurl, projid, exptime = 86400):
         patchlist = list()
         sourceid = self.get_sourceid(baseurl, projid)
@@ -218,9 +239,11 @@ class skt_db(object):
 
         logging.debug("setting patches as pending: %s", patchset)
 
-        self.cur.executemany('INSERT OR REPLACE INTO pendingpatches \
-                              VALUES(?, ?, ?)',
-                             [(pid, psid, tstamp) for pid in patchset])
+        self.cur.executemany('INSERT OR REPLACE INTO \
+                              pendingpatches(id, pdate, patchsource_id, \
+                              timestamp) \
+                              VALUES(?, ?, ?, ?)',
+                             [(pid, pdate, psid, tstamp) for (pid, pdate) in patchset])
         self.conn.commit()
 
     def unset_patchset_pending(self, baseurl, projid, patchset):
@@ -253,13 +276,14 @@ class skt_db(object):
                              (testrunid, commithash, brepoid))
         self.conn.commit()
 
-    def commit_patchtest(self, baserepo, commithash, patches, result, buildid):
+    def commit_patchtest(self, baserepo, commithash, patches, result, buildid,
+                         series = None):
         logging.debug("commit_patchtest: repo=%s; commit=%s; patches=%d; result=%s",
                       baserepo, commithash, len(patches), result)
         brepoid = self.get_repoid(baserepo)
         baselineid = self.get_baselineid(brepoid, commithash)
         testrunid = self.commit_testrun(result, buildid)
-        seriesid = self.commit_series(patches)
+        seriesid = self.commit_series(patches, series)
 
         for (pid, pname, purl, baseurl, projid, pdate) in patches:
             # TODO: Can accumulate per-project list instead of doing it one by
@@ -294,14 +318,15 @@ class skt_db(object):
                          (pid, pname, purl, sourceid, sid, pdate))
         self.conn.commit()
 
-    def commit_series(self, patches):
-        logging.debug("commit_series: %s", patches)
-        seriesid = 1
-        self.cur.execute('SELECT series_id FROM patch \
-                          ORDER BY series_id DESC LIMIT 1')
-        res = self.cur.fetchone()
-        if res != None:
-             seriesid = 1 + res[0]
+    def commit_series(self, patches, seriesid = None):
+        logging.debug("commit_series: %s (%s)", patches, seriesid)
+        if seriesid == None:
+            seriesid = 1
+            self.cur.execute('SELECT series_id FROM patch \
+                              ORDER BY series_id DESC LIMIT 1')
+            res = self.cur.fetchone()
+            if res != None:
+                 seriesid = 1 + res[0]
 
         for (pid, pname, purl, baseurl, projid, pdate) in patches:
             sourceid = self.get_sourceid(baseurl, projid)
