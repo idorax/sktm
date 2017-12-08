@@ -78,6 +78,8 @@ class skt_jenkins(object):
             if self.get_baseretcode(jobname, buildid) != 0:
                 logging.warning("baseline failure found during patch testing")
                 return sktm.tresult.BASELINE_FAILURE
+            else
+                return sktm.tresult.SUCCESS
 
         for (key, val) in build.get_resultset().iteritems():
             if not key.startswith("skt."):
