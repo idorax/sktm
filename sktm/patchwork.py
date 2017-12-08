@@ -11,12 +11,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
+import datetime
+import dateutil.parser
 import email
+import json
+import logging
+import requests
 import re
 import xmlrpclib
-import logging
-import json
-import requests
 
 SKIP_PATTERNS = [
         "\[[^\]]*iproute.*?\]",
@@ -138,11 +140,14 @@ class skt_patchwork2(object):
         return r.json()
 
     def get_new_patchsets(self):
-        logging.debug("get_new_patchsets since %s", self.since)
+        nsince = dateutil.parser.parse(self.since) + \
+                  datetime.timedelta(seconds=1)
+
+        logging.debug("get_new_patchsets since %s", nsince.isoformat())
         patchsets = self.get_series_from_url("%s?project=%d&since=%s" %
                                              (self.apiurls.get("series"),
                                               self.projectid,
-                                              self.since))
+                                              nsince.isoformat()))
         return patchsets
 
     def get_patchsets(self, patchlist):
