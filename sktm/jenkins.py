@@ -31,7 +31,7 @@ class skt_jenkins(object):
 
         return build
 
-    def get_cfg_data(self, jobname, buildid, stepname, cfgkey):
+    def get_cfg_data(self, jobname, buildid, stepname, cfgkey, default = None):
         build = self._wait_and_get_build(jobname, buildid)
 
         if not build.has_resultset():
@@ -42,7 +42,7 @@ class skt_jenkins(object):
             if key == stepname:
                 logging.debug("stdout=%s", val.stdout)
                 cfg = json.loads(val.stdout)
-                return cfg.get(cfgkey)
+                return cfg.get(cfgkey, default)
 
     def get_base_commitdate(self, jobname, buildid):
         return self.get_cfg_data(jobname, buildid, "skt.cmd_merge",
@@ -58,7 +58,7 @@ class skt_jenkins(object):
 
     def get_baseretcode(self, jobname, buildid):
         return self.get_cfg_data(jobname, buildid, "skt.cmd_run",
-                                 "baseretcode")
+                                 "baseretcode", 0)
 
     def get_result(self, jobname, buildid):
         build = self._wait_and_get_build(jobname, buildid)
