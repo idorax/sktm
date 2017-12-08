@@ -129,7 +129,7 @@ class watcher(object):
     def check_pending(self):
         for (pjt, bid) in self.pj:
             if self.jk.is_build_complete(self.jobname, bid):
-                logging.info("job completed: %d/%d", bid, pjt)
+                logging.info("job completed: jjid=%d; type=%d", bid, pjt)
                 self.pj.remove((pjt, bid))
                 if pjt == sktm.jtype.BASELINE:
                     self.db.update_baseline(self.baserepo,
