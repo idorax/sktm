@@ -147,7 +147,7 @@ class skt_db(object):
 
         self.cur.execute('SELECT patch.date FROM patch WHERE \
                             patchsource_id = ? \
-                            ORDER BY id DESC LIMIT 1',
+                            ORDER BY date DESC LIMIT 1',
                          (sourceid,))
         res = self.cur.fetchone()
         return None if res == None else res[0]
@@ -157,7 +157,7 @@ class skt_db(object):
 
         self.cur.execute('SELECT pdate FROM pendingpatches WHERE \
                             patchsource_id = ? \
-                            ORDER BY id DESC LIMIT 1',
+                            ORDER BY pdate DESC LIMIT 1',
                          (sourceid,))
         res = self.cur.fetchone()
         return None if res == None else res[0]
