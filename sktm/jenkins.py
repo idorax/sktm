@@ -74,7 +74,7 @@ class skt_jenkins(object):
                             build.get_status()))
 
         if bstatus == "UNSTABLE" and \
-                build.get_resultset()["skt.cmd_run"].status == "PASSED":
+                (build.get_resultset()["skt.cmd_run"].status in  ["PASSED", "FIXED"]):
             if self.get_baseretcode(jobname, buildid) != 0:
                 logging.warning("baseline failure found during patch testing")
                 return sktm.tresult.BASELINE_FAILURE
