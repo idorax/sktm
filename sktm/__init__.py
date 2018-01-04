@@ -56,9 +56,9 @@ class watcher(object):
         for (pjt, bid) in self.pj:
             logging.warning("Quiting before job completion: %d/%d", bid, pjt)
 
-    def add_pw(self, baseurl, pname, lpatch = None):
+    def add_pw(self, baseurl, pname, lpatch = None, apikey = None):
         if self.restapi:
-            pw = sktm.patchwork.skt_patchwork2(baseurl, pname, lpatch)
+            pw = sktm.patchwork.skt_patchwork2(baseurl, pname, lpatch, apikey)
 
             if lpatch == None:
                 lcdate = self.db.get_last_checked_patch_date(baseurl,

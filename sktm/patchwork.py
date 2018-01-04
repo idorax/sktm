@@ -30,9 +30,10 @@ SKIP_PATTERNS = [
 ]
 
 class skt_patchwork2(object):
-    def __init__(self, baseurl, projectname, since):
+    def __init__(self, baseurl, projectname, since, apikey = None):
         self.baseurl = baseurl
         self.since = since
+        self.apikey = apikey
         self.apiurls = self.get_apiurls()
         self.skp = re.compile("%s"  % "|".join(SKIP_PATTERNS),
                               re.IGNORECASE)
