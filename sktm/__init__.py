@@ -53,7 +53,7 @@ class watcher(object):
         self.restapi = restapi
 
     def cleanup(self):
-        for (pjt, bid) in self.pj:
+        for (pjt, bid, cpw) in self.pj:
             logging.warning("Quiting before job completion: %d/%d", bid, pjt)
 
     def add_pw(self, baseurl, pname, lpatch = None, apikey = None):
@@ -90,7 +90,8 @@ class watcher(object):
                                       baserepo = self.baserepo,
                                       ref = self.baseref,
                                       baseconfig = self.cfgurl,
-                                      makeopts = self.makeopts)))
+                                      makeopts = self.makeopts),
+                        None))
 
     def check_patchwork(self):
         stablecommit = self.db.get_stable(self.baserepo)
@@ -122,15 +123,16 @@ class watcher(object):
                                               baseconfig = self.cfgurl,
                                               patchwork = patchset,
                                               emails = emails,
-                                              makeopts = self.makeopts)))
+                                              makeopts = self.makeopts),
+                                cpw))
                 logging.info("submitted patchset: %s", patchset)
                 logging.debug("emails: %s", emails)
 
     def check_pending(self):
-        for (pjt, bid) in self.pj:
+        for (pjt, bid, cpw) in self.pj:
             if self.jk.is_build_complete(self.jobname, bid):
                 logging.info("job completed: jjid=%d; type=%d", bid, pjt)
-                self.pj.remove((pjt, bid))
+                self.pj.remove((pjt, bid, cpw))
                 if pjt == sktm.jtype.BASELINE:
                     self.db.update_baseline(self.baserepo,
                             self.jk.get_base_hash(self.jobname, bid),
@@ -159,15 +161,7 @@ class watcher(object):
                         if match:
                             baseurl = match.group(1)
                             pid = int(match.group(2))
-                            if self.restapi:
-                                pw = sktm.patchwork.skt_patchwork2(baseurl,
-                                                                   None,
-                                                                   pid)
-                            else:
-                                pw = sktm.patchwork.skt_patchwork(baseurl,
-                                                                  None,
-                                                                  pid)
-                            patch = pw.get_patch_by_id(pid)
+                            patch = cpw.get_patch_by_id(pid)
                             if patch == None:
                                 continue
                             logging.info("patch: [%d] %s", pid,
