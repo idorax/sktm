@@ -43,7 +43,8 @@ class skt_db(object):
                 CREATE TABLE patchsource(
                   id INTEGER PRIMARY KEY,
                   baseurl TEXT,
-                  project_id INTEGER
+                  project_id INTEGER,
+                  date TEXT
                 );
 
                 CREATE TABLE patch(
@@ -139,6 +140,20 @@ class skt_db(object):
                             patchsource_id = ? \
                             ORDER BY id DESC LIMIT 1',
                          (sourceid,))
+        res = self.cur.fetchone()
+        return None if res == None else res[0]
+
+    def set_event_date(self, baseurl, projid, date):
+        logging.debug("event date: %s %d -> %s", baseurl, projid, date)
+        self.cur.execute('UPDATE patchsource SET date = ? \
+                          WHERE baseurl = ? AND project_id = ?',
+                         (date, baseurl, projid))
+        self.conn.commit()
+
+    def get_last_event_date(self, baseurl, projid):
+        self.cur.execute('SELECT date FROM patchsource WHERE \
+                            baseurl = ? AND project_id = ?',
+                         (baseurl, projid))
         res = self.cur.fetchone()
         return None if res == None else res[0]
 

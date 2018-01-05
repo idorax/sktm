@@ -34,6 +34,7 @@ class skt_patchwork2(object):
     def __init__(self, baseurl, projectname, since, apikey = None):
         self.baseurl = baseurl
         self.since = since
+        self.nsince = None
         self.apikey = apikey
         self.apiurls = self.get_apiurls()
         self.skp = re.compile("%s"  % "|".join(SKIP_PATTERNS),
@@ -46,6 +47,10 @@ class skt_patchwork2(object):
     @property
     def projectid(self):
         return self.project.get("id")
+
+    @property
+    def newsince(self):
+        return self.nsince.isoformat()
 
     def patchurl(self, patch):
         return "%s/patch/%d" % (self.baseurl, patch.get("id"))
@@ -132,6 +137,40 @@ class skt_patchwork2(object):
 
         return patchsets
 
+    def get_patchsets_from_events(self, url):
+        patchsets = list()
+
+        logging.debug("get_patchsets_from_events: %s", url)
+        r = requests.get(url)
+
+        if r.status_code != 200:
+            raise Exception("Can't get series from url %s (%d)" % (url,
+                            r.status_code))
+
+        edata = r.json()
+        if type(edata) is not list:
+            sdata = [edata]
+
+        for event in edata:
+            series = event.get("payload", {}).get("series")
+            if series == None:
+                continue
+
+            edate = dateutil.parser.parse(event.get("date"))
+            if self.nsince == None or self.nsince < edate:
+                self.nsince = edate
+
+            patchsets += self.get_series_from_url(series.get("url"))
+
+        link = r.headers.get("Link")
+        if link != None:
+            m = re.match("<(.*)>; rel=\"next\"", link)
+            if m:
+                nurl = m.group(1)
+                patchsets += self.get_patchsets_from_events(nurl)
+
+        return patchsets
+
     def _set_patch_check(self, patch, payload):
         r = requests.post(patch.get("checks"),
                           headers = { "Authorization" : "Token %s" % self.apikey,
@@ -176,10 +215,11 @@ class skt_patchwork2(object):
                   datetime.timedelta(seconds=1)
 
         logging.debug("get_new_patchsets since %s", nsince.isoformat())
-        patchsets = self.get_series_from_url("%s?project=%d&since=%s" %
-                                             (self.apiurls.get("series"),
-                                              self.projectid,
-                                              nsince.isoformat()))
+        patchsets = self.get_patchsets_from_events(
+                         "%s?project=%d&category=series-completed&since=%s" %
+                         (self.apiurls.get("events"),
+                          self.projectid,
+                          nsince.isoformat()))
         return patchsets
 
     def get_patchsets(self, patchlist):

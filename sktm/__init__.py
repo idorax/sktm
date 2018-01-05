@@ -65,7 +65,8 @@ class watcher(object):
                                                              pw.projectid)
                 lpdate = self.db.get_last_pending_patch_date(baseurl,
                                                              pw.projectid)
-                since = max(lcdate, lpdate)
+                ledate = self.db.get_last_event_date(baseurl, pw.projectid)
+                since = max(ledate, lcdate, lpdate)
                 if since == None:
                     raise Exception("%s project: %s was never tested before, please provide initial patch id" %
                                     (baseurl, pname))
@@ -105,6 +106,7 @@ class watcher(object):
             patchsets += cpw.get_patchsets(
                     self.db.get_expired_pending_patches(cpw.baseurl,
                                                         cpw.projectid, 43200))
+            self.db.set_event_date(cpw.baseurl, cpw.projectid, cpw.newsince)
             for (patchset, emails) in patchsets:
                 pids = list()
                 for purl in patchset:
