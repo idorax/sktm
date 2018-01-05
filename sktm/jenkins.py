@@ -60,6 +60,10 @@ class skt_jenkins(object):
         return self.get_cfg_data(jobname, buildid, "skt.cmd_run",
                                  "baseretcode", 0)
 
+    def get_result_url(self, jobname, buildid):
+        return "%s/job/%s/%s" % (self.server.base_server_url(), jobname,
+                                 buildid)
+
     def get_result(self, jobname, buildid):
         build = self._wait_and_get_build(jobname, buildid)
 

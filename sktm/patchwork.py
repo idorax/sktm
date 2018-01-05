@@ -19,6 +19,7 @@ import logging
 import requests
 import re
 import xmlrpclib
+import sktm
 
 SKIP_PATTERNS = [
         "\[[^\]]*iproute.*?\]",
@@ -131,6 +132,36 @@ class skt_patchwork2(object):
 
         return patchsets
 
+    def _set_patch_check(self, patch, payload):
+        r = requests.post(patch.get("checks"),
+                          headers = { "Authorization" : "Token %s" % self.apikey,
+                                      "Content-Type"  : "application/json" },
+                          data = json.dumps(payload))
+
+        if r.status_code not in [200, 201]:
+            logging.warning("Failed to post patch check: %d" % r.status_code)
+
+    def set_patch_check(self, pid, jurl, result):
+        if self.apikey == None:
+            logging.debug("No patchwork api key provided, not setting checks")
+            return
+
+        payload = { 'patch' : pid,
+                    'state' : None,
+                    'target_url' : jurl,
+                    'context' : 'skt',
+                    'description' : 'skt boot test' }
+        if result == sktm.tresult.SUCCESS:
+            payload['state'] = 'success'
+        elif result == sktm.tresult.BASELINE_FAILURE:
+            payload['state'] = 'warning'
+            payload['description'] = 'Baseline failure found while testing this patch'
+        else:
+            payload['state'] = 'fail'
+            payload['description'] = str(result)
+
+        self._set_patch_check(self.get_patch_by_id(pid), payload)
+
     def get_patch_by_id(self, pid):
         r = requests.get("%s/%d" % (self.apiurls.get("patches"), pid))
 
@@ -222,6 +253,10 @@ class skt_patchwork(object):
                     emails.add(faddr)
 
         return emails
+
+    def set_patch_check(self, pid, jurl, result):
+        # TODO: Implement this for xmlrpc
+        pass
 
     def dump_patch(self, pid):
         patch = self.get_patch_by_id(pid)

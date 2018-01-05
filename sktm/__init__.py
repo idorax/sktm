@@ -144,7 +144,9 @@ class watcher(object):
                     slist = list()
                     series = None
                     bres = self.jk.get_result(self.jobname, bid)
+                    rurl = self.jk.get_result_url(self.jobname, bid)
                     logging.info("result=%s", bres)
+                    logging.info("url=%s", rurl)
                     basehash = self.jk.get_base_hash(self.jobname, bid)
                     logging.info("basehash=%s", basehash)
                     if bres == sktm.tresult.BASELINE_FAILURE:
@@ -153,7 +155,6 @@ class watcher(object):
                                 self.jk.get_base_commitdate(self.jobname, bid),
                                 sktm.tresult.TEST_FAILURE,
                                 bid)
-                        continue
 
                     patchset = self.jk.get_patchwork(self.jobname, bid)
                     for purl in patchset:
@@ -175,6 +176,7 @@ class watcher(object):
                             patches.append((pid, patch.get("name"), purl,
                                             baseurl, projid,
                                             patch.get("date").replace(" ", "T")))
+                            cpw.set_patch_check(pid, rurl, bres)
                         else:
                             raise Exception("Malfomed patch url: %s" % purl)
 
@@ -183,8 +185,9 @@ class watcher(object):
                     except ValueError:
                         pass
 
-                    self.db.commit_patchtest(self.baserepo, basehash, patches,
-                                             bres, bid, series)
+                    if bres != sktm.tresult.BASELINE_FAILURE:
+                        self.db.commit_patchtest(self.baserepo, basehash,
+                                                 patches, bres, bid, series)
                 else:
                     raise Exception("Unknown job type: %d" % pjt)
 
