@@ -144,6 +144,8 @@ class skt_db(object):
         return None if res == None else res[0]
 
     def set_event_date(self, baseurl, projid, date):
+        if date == None:
+            return
         logging.debug("event date: %s %d -> %s", baseurl, projid, date)
         self.cur.execute('UPDATE patchsource SET date = ? \
                           WHERE baseurl = ? AND project_id = ?',
