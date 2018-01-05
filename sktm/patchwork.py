@@ -50,7 +50,7 @@ class skt_patchwork2(object):
 
     @property
     def newsince(self):
-        return self.nsince.isoformat()
+        return self.nsince.isoformat() if self.nsince else None
 
     def patchurl(self, patch):
         return "%s/patch/%d" % (self.baseurl, patch.get("id"))
@@ -251,6 +251,11 @@ class skt_patchwork(object):
         self.skp = re.compile("%s"  % "|".join(SKIP_PATTERNS),
                               re.IGNORECASE)
         self.series = dict()
+
+
+    @property
+    def newsince(self):
+        return None
 
     def patchurl(self, patch):
         return "%s/patch/%d" % (self.baseurl, patch.get("id"))
