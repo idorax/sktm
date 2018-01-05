@@ -116,6 +116,10 @@ class skt_patchwork2(object):
         for series in sdata:
             plist = list()
             emails = set()
+
+            if series.get("received_all") == False:
+                continue
+
             logging.info("series: [%d] %s", series.get("id"),
                          series.get("name"))
             for patch in series.get("patches"):
