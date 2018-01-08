@@ -219,11 +219,10 @@ class skt_patchwork2(object):
                   datetime.timedelta(seconds=1)
 
         logging.debug("get_new_patchsets since %s", nsince.isoformat())
-        patchsets = self.get_patchsets_from_events(
-                         "%s?project=%d&category=series-completed&since=%s" %
-                         (self.apiurls.get("events"),
-                          self.projectid,
-                          nsince.isoformat()))
+        patchsets = self.get_series_from_url("%s?project=%d&since=%s" %
+                                             (self.apiurls.get("series"),
+                                              self.projectid,
+                                              nsince.isoformat()))
         return patchsets
 
     def get_patchsets(self, patchlist):
