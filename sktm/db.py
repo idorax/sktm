@@ -293,6 +293,18 @@ class skt_db(object):
                              (testrunid, commithash, brepoid))
         self.conn.commit()
 
+    # FIXME: There is a chance of series_id collisions between different
+    # patchwork instances
+    def get_series_result(self, series_id):
+        self.cur.execute('SELECT testrun.result_id FROM patchtest, testrun \
+                            WHERE patchtest.patch_series_id = ? \
+                            AND patchtest.testrun_id = testrun.id \
+                            LIMIT 1',
+                         (series_id, ))
+
+        res = self.cur.fetchone()
+        return None if res == None else res[0]
+
     def commit_patchtest(self, baserepo, commithash, patches, result, buildid,
                          series = None):
         logging.debug("commit_patchtest: repo=%s; commit=%s; patches=%d; result=%s",
