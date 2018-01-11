@@ -214,15 +214,50 @@ class skt_patchwork2(object):
 
         return r.json()
 
-    def get_new_patchsets(self):
+    def get_patchsets_by_patch(self, url, db = None, seen = set()):
+        patchsets = list()
+
+        logging.debug("get_patchsets_by_patch %s", url)
+        r = requests.get(url)
+
+        if r.status_code != 200:
+            raise Exception("Can't get series from url %s (%d)" % (url,
+                            r.status_code))
+
+        pdata = r.json()
+        if type(pdata) is not list:
+            pdata = [pdata]
+
+        for patch in pdata:
+            for series in patch.get("series"):
+                sid = series.get("id")
+                if (db != None and db.get_series_result(sid) != None) or \
+                        (sid in seen):
+                    continue
+                else:
+                    patchsets += self.get_series_from_url("%s/%d" %
+                                                  (self.apiurls.get("series"),
+                                                  sid))
+                    seen.add(sid)
+
+        link = r.headers.get("Link")
+        if link != None:
+            m = re.match("<(.*)>; rel=\"next\"", link)
+            if m:
+                nurl = m.group(1)
+                patchsets += self.get_patchsets_by_patch(nurl, db, seen)
+
+        return patchsets
+
+    def get_new_patchsets(self, db = None):
         nsince = dateutil.parser.parse(self.since) + \
                   datetime.timedelta(seconds=1)
 
         logging.debug("get_new_patchsets since %s", nsince.isoformat())
-        patchsets = self.get_series_from_url("%s?project=%d&since=%s" %
-                                             (self.apiurls.get("series"),
-                                              self.projectid,
-                                              nsince.isoformat()))
+        patchsets = self.get_patchsets_by_patch("%s?project=%d&since=%s" %
+                                                 (self.apiurls.get("patches"),
+                                                  self.projectid,
+                                                  nsince.isoformat()))
         return patchsets
 
     def get_patchsets(self, patchlist):
