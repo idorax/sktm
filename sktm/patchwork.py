@@ -14,6 +14,7 @@
 import datetime
 import dateutil.parser
 import email
+import enum
 import json
 import logging
 import requests
@@ -30,6 +31,12 @@ SKIP_PATTERNS = [
         "\[[^\]]*pull.*?\]",
         "pull.?request"
 ]
+
+class pwresult(enum.IntEnum):
+    PENDING = 0
+    SUCCESS = 1
+    WARNING = 2
+    FAILURE = 3
 
 class skt_patchwork2(object):
     def __init__(self, baseurl, projectname, since, apikey = None):
@@ -196,12 +203,12 @@ class skt_patchwork2(object):
                     'context' : 'skt',
                     'description' : 'skt boot test' }
         if result == sktm.tresult.SUCCESS:
-            payload['state'] = 'success'
+            payload['state'] = pwresult.SUCCESS
         elif result == sktm.tresult.BASELINE_FAILURE:
-            payload['state'] = 'warning'
+            payload['state'] = pwresult.WARNING
             payload['description'] = 'Baseline failure found while testing this patch'
         else:
-            payload['state'] = 'fail'
+            payload['state'] = pwresult.FAILURE
             payload['description'] = str(result)
 
         self._set_patch_check(self.get_patch_by_id(pid), payload)
