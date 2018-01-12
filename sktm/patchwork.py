@@ -18,6 +18,7 @@ import json
 import logging
 import requests
 import re
+import urllib
 import xmlrpclib
 import sktm
 
@@ -257,7 +258,7 @@ class skt_patchwork2(object):
         patchsets = self.get_patchsets_by_patch("%s?project=%d&since=%s" %
                                                  (self.apiurls.get("patches"),
                                                   self.projectid,
-                                                  nsince.isoformat()))
+                                                  urllib.quote(nsince.isoformat())))
         return patchsets
 
     def get_patchsets(self, patchlist):
