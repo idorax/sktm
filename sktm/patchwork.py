@@ -203,12 +203,12 @@ class skt_patchwork2(object):
                     'context' : 'skt',
                     'description' : 'skt boot test' }
         if result == sktm.tresult.SUCCESS:
-            payload['state'] = pwresult.SUCCESS
+            payload['state'] = int(pwresult.SUCCESS)
         elif result == sktm.tresult.BASELINE_FAILURE:
-            payload['state'] = pwresult.WARNING
+            payload['state'] = int(pwresult.WARNING)
             payload['description'] = 'Baseline failure found while testing this patch'
         else:
-            payload['state'] = pwresult.FAILURE
+            payload['state'] = int(pwresult.FAILURE)
             payload['description'] = str(result)
 
         self._set_patch_check(self.get_patch_by_id(pid), payload)
