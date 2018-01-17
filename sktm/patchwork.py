@@ -126,6 +126,8 @@ class skt_patchwork2(object):
             emails = set()
 
             if series.get("received_all") == False:
+                logging.info("skipping incomplete series: [%d] %s",
+                             series.get("id"), series.get("name"))
                 continue
 
             logging.info("series: [%d] %s", series.get("id"),
@@ -239,8 +241,11 @@ class skt_patchwork2(object):
         for patch in pdata:
             for series in patch.get("series"):
                 sid = series.get("id")
-                if (db != None and db.get_series_result(sid) != None) or \
-                        (sid in seen):
+                if (sid in seen):
+                    continue
+                elif (db != None and db.get_series_result(sid) != None):
+                    logging.info("skipping already tested series: [%d] %s",
+                                 sid, series.get("name"))
                     continue
                 else:
                     patchsets += self.get_series_from_url("%s/%d" %
