@@ -130,6 +130,11 @@ class skt_patchwork2(object):
                              series.get("id"), series.get("name"))
                 continue
 
+            if self.skp.search(series.get("name")):
+                logging.info("skipping series %d: %s", series.get("id"),
+                             series.get("name"))
+                continue
+
             logging.info("series: [%d] %s", series.get("id"),
                          series.get("name"))
             for patch in series.get("patches"):
