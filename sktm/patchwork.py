@@ -32,6 +32,52 @@ SKIP_PATTERNS = [
         "pull.?request"
 ]
 
+def stringfy(v):
+    """Convert any value to a str object
+
+    xmlrpc is not consistent: sometimes the same field
+    is returned a str, sometimes as unicode. We need to
+    handle both cases properly.
+    """
+    if type(v) is str:
+        return v
+    elif type(v) is unicode:
+        return v.encode('utf-8')
+    else:
+        return str(v)
+
+#Internal RH PatchWork adds a magic API version with each call
+#this class just magically adds/removes it
+class RpcWrapper:
+    def __init__(self, real_rpc):
+        self.rpc = real_rpc
+        #patchwork api coded to
+        self.version = 1010
+
+    def _wrap_call(self, rpc, name):
+        #Wrap a RPC call, adding the expected version number as argument
+        fn = getattr(rpc, name)
+        def wrapper(*args, **kwargs):
+            return fn(self.version, *args, **kwargs)
+        return wrapper
+
+    def _return_check(self, r):
+        #Returns just the real return value, without the version info.
+        v = self.version
+        if r[0] != v:
+            raise RpcProtocolMismatch('Patchwork API mismatch (%i, expected %i)' % (r[0], v))
+        return r[1]
+
+    def _return_unwrapper(self, fn):
+        def unwrap(*args, **kwargs):
+            return self._return_check(fn(*args, **kwargs))
+        return unwrap
+
+    def __getattr__(self, name):
+        #Add the RPC version checking call/return wrappers
+        return self._return_unwrapper(self._wrap_call(self.rpc, name))
+
+
 class pwresult(enum.IntEnum):
     PENDING = 0
     SUCCESS = 1
@@ -300,7 +346,8 @@ class skt_patchwork2(object):
 
 class skt_patchwork(object):
     def __init__(self, baseurl, projectname, lastpatch):
-        self.rpc = xmlrpclib.ServerProxy("%s/xmlrpc/" % baseurl)
+        self.fields = None
+        self.rpc = self.get_rpc(baseurl)
         self.baseurl = baseurl
         self.projectid = self.get_projectid(projectname) if projectname else None
         self.lastpatch = lastpatch
@@ -313,6 +360,31 @@ class skt_patchwork(object):
     def newsince(self):
         return None
 
+    def get_rpc(self, baseurl):
+        rpc = xmlrpclib.ServerProxy("%s/xmlrpc/" % baseurl)
+        try:
+            ver = rpc.pw_rpc_version()
+            # check for normal patchwork1 xmlrpc version numbers
+            if not (ver == [1,3,0] or ver == 1):
+                raise Exception("Unknown xmlrpc version %s", ver)
+
+        except xmlrpclib.Fault as err:
+            if err.faultCode == 1 and \
+               re.search("index out of range", err.faultString):
+                # possible internal RH instance
+                rpc = RpcWrapper(rpc)
+                ver = rpc.pw_rpc_version()
+                if ver < 1010:
+                    raise Exception("Unsupported xmlrpc version %s", ver)
+
+                # grab extra info for later parsing
+                self.fields = [ 'id', 'name', 'submitter', 'msgid', \
+                                ['root_comment', ['headers']]]
+            else:
+                 raise Exception("Unknown xmlrpc fault: %s", err.faultString)
+
+        return rpc
+
     def patchurl(self, patch):
         return "%s/patch/%d" % (self.baseurl, patch.get("id"))
 
@@ -323,20 +395,50 @@ class skt_patchwork(object):
         logging.info("%d: %s", pid, pname)
 
     def get_patch_by_id(self, pid):
-        patch = self.rpc.patch_get(pid)
+        if not self.fields:
+            patch = self.rpc.patch_get(pid)
+        else:
+            # internal RH only: special hook to get original subject line
+            patch = self.rpc.patch_get(pid, self.fields)
 
         if patch == None or patch == {}:
             logging.warning("Failed to get data for patch %d", pid)
             patch = None
 
+        if 'root_comment' in patch:
+            # internal RH only: rewrite the original subject line
+            e = email.message_from_string(patch['root_comment']['headers'])
+            subject = e.get('Subject')
+            if subject is not None:
+                subject = subject.replace('\n\t', ' ').replace('\n', ' ')
+            patch['name'] = subject
+
         return patch
+
+    def get_patch_list(self, filt):
+        if not self.fields:
+            patches = self.rpc.patch_list(filt)
+            return patches
+
+        # internal RH only: special hook to get original subject line
+        patches = self.rpc.patch_list(filt, False, self.fields)
+
+        # rewrite all subject lines back to original
+        for patch in patches:
+            e = email.message_from_string(patch['root_comment']['headers'])
+            subject = e.get('Subject')
+            if subject is not None:
+                subject = subject.replace('\n\t', ' ').replace('\n', ' ')
+            patch['name'] = subject
+
+        return patches
 
     def get_patch_emails(self, pid):
         emails = set()
         used_addr = list()
 
-        mboxdata = self.rpc.patch_get_mbox(pid)
-        mbox = email.message_from_string(mboxdata.encode('utf-8'))
+        mboxdata = stringfy(self.rpc.patch_get_mbox(pid))
+        mbox = email.message_from_string(mboxdata)
 
         for header in ["From", "To", "Cc"]:
             if mbox[header] == None:
@@ -445,7 +547,7 @@ class skt_patchwork(object):
         patchsets = list()
 
         logging.debug("get_new_patchsets: %d", self.lastpatch)
-        for patch in self.rpc.patch_list({'project_id' : self.projectid,
+        for patch in self.get_patch_list({'project_id' : self.projectid,
                                           'id__gt': self.lastpatch}):
             pset = self.parse_patch(patch)
             if pset != None:
