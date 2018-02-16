@@ -54,7 +54,7 @@ class skt_patchwork2(object):
 
     @property
     def projectid(self):
-        return self.project.get("id")
+        return int(self.project.get("id"))
 
     @property
     def newsince(self):
@@ -368,7 +368,7 @@ class skt_patchwork(object):
         plist = self.rpc.project_list(projectname)
         for project in plist:
             if project.get("linkname") == projectname:
-                pid = project.get("id")
+                pid = int(project.get("id"))
                 logging.debug("%s -> %d", projectname, pid)
                 return pid
 

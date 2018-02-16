@@ -168,11 +168,11 @@ class watcher(object):
                             logging.info("patch: [%d] %s", pid,
                                          patch.get("name"))
                             if self.restapi:
-                                projid = patch.get("project").get("id")
+                                projid = int(patch.get("project").get("id"))
                                 for series in patch.get("series"):
                                     slist.append(series.get("id"))
                             else:
-                                projid = patch.get("project_id")
+                                projid = int(patch.get("project_id"))
                             patches.append((pid, patch.get("name"), purl,
                                             baseurl, projid,
                                             patch.get("date").replace(" ", "T")))
