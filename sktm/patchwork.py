@@ -379,7 +379,8 @@ class skt_patchwork(object):
 
                 # grab extra info for later parsing
                 self.fields = [ 'id', 'name', 'submitter', 'msgid', \
-                                ['root_comment', ['headers']]]
+                                ['root_comment', ['headers']], 'date', \
+                                'project_id' ]
             else:
                  raise Exception("Unknown xmlrpc fault: %s", err.faultString)
 
