@@ -14,6 +14,7 @@
 import datetime
 import dateutil.parser
 import email
+import email.header
 import enum
 import json
 import logging
@@ -395,6 +396,17 @@ class skt_patchwork(object):
 
         logging.info("%d: %s", pid, pname)
 
+    def update_patch_name(self, patch):
+        if 'root_comment' in patch:
+            # internal RH only: rewrite the original subject line
+            e = email.message_from_string(patch['root_comment']['headers'])
+            subject = e.get('Subject')
+            if subject is not None:
+                subject = subject.replace('\n\t', ' ').replace('\n', ' ')
+            patch['name'] = stringfy(email.header.decode_header(subject)[0][0])
+
+        return patch
+
     def get_patch_by_id(self, pid):
         if not self.fields:
             patch = self.rpc.patch_get(pid)
@@ -406,13 +418,7 @@ class skt_patchwork(object):
             logging.warning("Failed to get data for patch %d", pid)
             patch = None
 
-        if 'root_comment' in patch:
-            # internal RH only: rewrite the original subject line
-            e = email.message_from_string(patch['root_comment']['headers'])
-            subject = e.get('Subject')
-            if subject is not None:
-                subject = subject.replace('\n\t', ' ').replace('\n', ' ')
-            patch['name'] = subject
+        self.update_patch_name(patch)
 
         return patch
 
@@ -426,11 +432,7 @@ class skt_patchwork(object):
 
         # rewrite all subject lines back to original
         for patch in patches:
-            e = email.message_from_string(patch['root_comment']['headers'])
-            subject = e.get('Subject')
-            if subject is not None:
-                subject = subject.replace('\n\t', ' ').replace('\n', ' ')
-            patch['name'] = subject
+            self.update_patch_name(patch)
 
         return patches
 
