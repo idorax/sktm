@@ -18,7 +18,16 @@ import time
 import sktm
 
 class skt_jenkins(object):
+    """Jenkins interface"""
     def __init__(self, url, username = None, password = None):
+        """
+        Initialize a Jenkins interface.
+
+        Args:
+            url:         Jenkins instance URL.
+            username:    Jenkins user name.
+            password:    Jenkins user password.
+        """
         self.server = jenkinsapi.jenkins.Jenkins(url, username, password)
 
     def _wait_and_get_build(self, jobname, buildid):
@@ -100,9 +109,25 @@ class skt_jenkins(object):
 
         logging.warning("Unknown status. marking as test failure")
         return sktm.tresult.TEST_FAILURE
-
     def build(self, jobname, baserepo = None, ref = None, baseconfig = None,
               patchwork = [], emails = set(), makeopts = None):
+        """
+        Submit a build of a patchset.
+
+        Args:
+            jobname:    Name of the Jenkins project to build.
+            baserepo:   Baseline Git repo URL.
+            ref:        Baseline Git reference to test.
+            baseconfig: Kernel configuration URL.
+            patchwork:  List of URLs pointing to patches to apply.
+            emails:     Set of e-mail addresses involved with the patchset to
+                        send notifications to.
+            makeopts:   String of extra arguments to pass to the build's make
+                        invocation.
+
+        Returns:
+            Submitted build number.
+        """
         params = dict()
         if baserepo != None:
             params["baserepo"] = baserepo

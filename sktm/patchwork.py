@@ -86,12 +86,30 @@ class pwresult(enum.IntEnum):
     FAILURE = 3
 
 class skt_patchwork2(object):
+    """
+    A Patchwork REST interface
+    """
     def __init__(self, baseurl, projectname, since, apikey = None):
+        """
+        Initialize a Patchwork REST interface.
+
+        Args:
+            baseurl:        Patchwork base URL.
+            projectname:    Patchwork project name, or None.
+            since:          Last processed patch timestamp in a format
+                            accepted by dateutil.parser.parse. Patches with
+                            this or earlier timestamp will be ignored.
+            apikey:         Patchwork API authentication token.
+        """
+        # Base Patchwork URL
         self.baseurl = baseurl
+        # Last processed patch timestamp in a dateutil.parser.parse format
         self.since = since
         self.nsince = None
+        # Patchwork API authentication token.
         self.apikey = apikey
         self.apiurls = self.get_apiurls()
+        # A regular expression matching names of the patches to skip
         self.skp = re.compile("%s"  % "|".join(SKIP_PATTERNS),
                               re.IGNORECASE)
         self.project = None
@@ -125,6 +143,16 @@ class skt_patchwork2(object):
         return r.json()
 
     def get_patch_emails(self, pid):
+        """
+        Get a set of e-mail addresses involved with the patch with specified
+        ID.
+
+        Args:
+            pid:    ID of the patch to get e-mails for.
+
+        Returns:
+            A set of e-mail addresses.
+        """
         emails = set()
         used_addr = list()
 
@@ -268,6 +296,16 @@ class skt_patchwork2(object):
         self._set_patch_check(self.get_patch_by_id(pid), payload)
 
     def get_patch_by_id(self, pid):
+        """
+        Retrieve a patch object by patch ID.
+
+        Args:
+            pid:    ID of the patch to retrieve.
+
+        Returns:
+            Parsed JSON object as described in
+            https://patchwork-freedesktop.readthedocs.io/en/latest/rest.html#patches
+        """
         r = requests.get("%s/%d" % (self.apiurls.get("patches"), pid))
 
         if r.status_code != 200:
@@ -315,6 +353,15 @@ class skt_patchwork2(object):
         return patchsets
 
     def get_new_patchsets(self, db = None):
+        """
+        Retrieve a list of info tuples for applicable (non-skipped) patchsets
+        which haven't been processed yet.
+
+        Returns:
+            A list of patchset info tuples, each containing a list of URLs of
+            patches comprising the patchset, and a list of e-mail addresses
+            involved with the patchset.
+        """
         nsince = dateutil.parser.parse(self.since) + \
                   datetime.timedelta(seconds=1)
 
@@ -346,12 +393,29 @@ class skt_patchwork2(object):
         return patchsets
 
 class skt_patchwork(object):
+    """
+    A Patchwork XML RPC interface
+    """
     def __init__(self, baseurl, projectname, lastpatch):
+        """
+        Initialize a Patchwork XML RPC interface.
+
+        Args:
+            baseurl:        Patchwork base URL.
+            projectname:    Patchwork project name, or None.
+            lastpatch:      Last processed patch ID.
+                            Patches with this or lower ID will be ignored.
+        """
         self.fields = None
+        # XML RPC interface to Patchwork
         self.rpc = self.get_rpc(baseurl)
+        # Base Patchwork URL
         self.baseurl = baseurl
+        # ID of the project, if project name is supplied, otherwise None
         self.projectid = self.get_projectid(projectname) if projectname else None
+        # Last processed patch ID
         self.lastpatch = lastpatch
+        # A regular expression matching names of the patches to skip
         self.skp = re.compile("%s"  % "|".join(SKIP_PATTERNS),
                               re.IGNORECASE)
         self.series = dict()
@@ -388,6 +452,15 @@ class skt_patchwork(object):
         return rpc
 
     def patchurl(self, patch):
+        """
+        Format a URL for a patch object.
+
+        Args:
+            patch:  Patch object as returned by get_patch_by_id().
+
+        Returns:
+            Patch URL.
+        """
         return "%s/patch/%d" % (self.baseurl, patch.get("id"))
 
     def log_patch(self, patch):
@@ -408,6 +481,15 @@ class skt_patchwork(object):
         return patch
 
     def get_patch_by_id(self, pid):
+        """
+        Retrieve a patch object by patch ID.
+
+        Args:
+            pid:    ID of the patch to retrieve.
+
+        Returns:
+            The patch object as returned by XML RPC.
+        """
         if not self.fields:
             patch = self.rpc.patch_get(pid)
         else:
@@ -437,6 +519,16 @@ class skt_patchwork(object):
         return patches
 
     def get_patch_emails(self, pid):
+        """
+        Get a set of e-mail addresses involved with the patch with specified
+        ID.
+
+        Args:
+            pid:    ID of the patch to get e-mails for.
+
+        Returns:
+            A set of e-mail addresses
+        """
         emails = set()
         used_addr = list()
 
@@ -480,6 +572,18 @@ class skt_patchwork(object):
         raise Exception("Couldn't find project %s" % projectname)
 
     def parse_patch(self, patch):
+        """
+        Extract the list of patch URLs and the list of involved e-mail
+        addresses from a patchset object, if it is not supposed to be skipped.
+
+        Args:
+            patch   The patch object as returned by get_patch_by_id().
+
+        Returns:
+            None, if patch should be skipped, or a patchset info tuple,
+            containing a list of URLs of patches comprising the patchset, and
+            a list of e-mail addresses involved with the patchset.
+        """
         pid = patch.get("id")
         pname = patch.get("name")
         result = None
@@ -546,6 +650,15 @@ class skt_patchwork(object):
         return result
 
     def get_new_patchsets(self):
+        """
+        Retrieve a list of info tuples for applicable (non-skipped) patchsets
+        which haven't been processed yet.
+
+        Returns:
+            A list of patchset info tuples, each containing a list of URLs of
+            patches comprising the patchset, and a list of e-mail addresses
+            involved with the patchset.
+        """
         patchsets = list()
 
         logging.debug("get_new_patchsets: %d", self.lastpatch)
@@ -557,6 +670,19 @@ class skt_patchwork(object):
         return patchsets
 
     def get_patchsets(self, patchlist):
+        """
+        Retrieve a list of info tuples of applicable (non-skipped) patchsets
+        for a list of specified patch IDs.
+
+        Args:
+            patchlist:  List of patch IDs to retrieve info tuples for,
+                        or skip over.
+
+        Returns:
+            A list of patchset info tuples, each containing a list of URLs of
+            patches comprising the patchset, and a list of e-mail addresses
+            involved with the patchset.
+        """
         patchsets = list()
 
         logging.debug("get_patchsets: %s", patchlist)

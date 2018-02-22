@@ -96,6 +96,15 @@ class skt_db(object):
         tc.close()
 
     def get_repoid(self, baserepo):
+        """
+        Fetch or create an ID of a baseline Git repo URL.
+
+        Args:
+            baserepo:   Baseline Git repo URL to get ID for.
+
+        Returns:
+            Located or created integer ID of the baseline Git repo.
+        """
         self.cur.execute('SELECT id FROM baserepo WHERE url=?',
                          (baserepo,))
 
@@ -109,6 +118,17 @@ class skt_db(object):
         return self.get_repoid(baserepo)
 
     def get_sourceid(self, baseurl, projid):
+        """
+        Fetch or create an ID of a patch source corresponding to a Patchwork
+        base URL and a patchwork project ID.
+
+        Args:
+            baseurl:    Patchwork base URL.
+            projid:     Patchwork project ID.
+
+        Returns:
+            Located or created integer ID of the patch source.
+        """
         self.cur.execute('SELECT id FROM patchsource WHERE \
                           baseurl=? AND \
                           project_id=?',
@@ -180,6 +200,19 @@ class skt_db(object):
         return None if res == None else res[0]
 
     def get_expired_pending_patches(self, baseurl, projid, exptime = 86400):
+        """
+        Get a list of IDs of pending patches older than specified time, for a
+        combination of a Patchwork base URL and Patchwork project ID.
+
+        Args:
+            baseurl:    Patchwork base URL.
+            projid:     Patchwork project ID.
+            exptime:    Minimum age of patches to return, seconds.
+                        Default is 24 hours.
+
+        Returns:
+            List of patch IDs.
+        """
         patchlist = list()
         sourceid = self.get_sourceid(baseurl, projid)
         tstamp = int(time.time()) - exptime
@@ -227,6 +260,15 @@ class skt_db(object):
         return None if res == None else sktm.tresult(res[0])
 
     def get_stable(self, baserepo):
+        """
+        Get the latest stable commit ID for a baseline Git repo URL.
+
+        Args:
+            baserepo:   Baseline Git repo URL.
+
+        Returns:
+            Latest stable commit ID, or None, if there are no stable commits.
+        """
         brid = self.get_repoid(baserepo)
 
         self.cur.execute('SELECT commitid FROM baseline, testrun WHERE \

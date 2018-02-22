@@ -21,6 +21,7 @@ import sktm.jenkins
 import sktm.patchwork
 
 class tresult(enum.IntEnum):
+    """Test result"""
     SUCCESS = 0
     MERGE_FAILURE = 1
     BUILD_FAILURE = 2
@@ -29,27 +30,67 @@ class tresult(enum.IntEnum):
     BASELINE_FAILURE = 5
 
 class jtype(enum.IntEnum):
+    """Job type"""
     BASELINE = 0
     PATCHWORK = 1
 
 class watcher(object):
     def __init__(self, jenkinsurl, jenkinslogin, jenkinspassword,
                  jenkinsjobname, dbpath, makeopts = None):
+        """
+        Initialize a "watcher".
+
+        Args:
+            jenkinsurl:         Jenkins instance URL.
+            jenkinslogin:       Jenkins user name.
+            jenkinspassword:    Jenkins user password.
+            jenkinsjobname:     Name of the Jenkins job to trigger and watch.
+            dbpath:             Path to the job status database file.
+            makeopts:           Extra arguments to pass to "make" when
+                                building.
+        """
+        # Database instance
         self.db = sktm.db.skt_db(os.path.expanduser(dbpath))
+        # Jenkins interface instance
         self.jk = sktm.jenkins.skt_jenkins(jenkinsurl, jenkinslogin,
                                            jenkinspassword)
+        # Jenkins project name
         self.jobname = jenkinsjobname
+        # Extra arguments to pass to "make"
         self.makeopts = makeopts
+        # List of pending Jenkins builds, each one represented by a 3-tuple
+        # containing:
+        # * Build type (jtype)
+        # * Build number
+        # * Patchwork interface to get details of the tested patch from
         self.pj = list()
+        # List of Patchwork interfaces
         self.pw = list()
+        # True if REST-based Patchwork interfaces should be created,
+        # False if XML RPC-based Patchwork interfaces should be created
         self.restapi = False
 
     def set_baseline(self, repo, ref = "master", cfgurl = None):
+        """
+        Set baseline parameters.
+
+        Args:
+            repo:   Git repository URL.
+            ref:    Git reference to test.
+            cfgurl: Kernel configuration URL.
+        """
         self.baserepo = repo
         self.baseref = ref
         self.cfgurl = cfgurl
 
     def set_restapi(self, restapi = False):
+        """
+        Set the type of the next added Patchwork interface.
+
+        Args:
+            restapi:    True if the next added interface will be REST-based,
+                        false, if it will be XML RPC-based.
+        """
         self.restapi = restapi
 
     def cleanup(self):
@@ -57,6 +98,20 @@ class watcher(object):
             logging.warning("Quiting before job completion: %d/%d", bid, pjt)
 
     def add_pw(self, baseurl, pname, lpatch = None, apikey = None):
+        """
+        Add a Patchwork interface with specified parameters.
+        Add an XML RPC-based interface, if self.restapi is false,
+        add a REST-based interface, if self.restapi is true.
+
+        Args:
+            baseurl:        Patchwork base URL.
+            pname:          Patchwork project name.
+            lpatch:         Last processed patch. Patch ID, if adding an XML
+                            RPC-based interface. Patch timestamp, if adding a
+                            REST-based interface. Can be omitted to
+                            retrieve one from the database.
+            apikey:         Patchwork REST API authentication token.
+        """
         if self.restapi:
             pw = sktm.patchwork.skt_patchwork2(baseurl, pname, lpatch, apikey)
 
@@ -85,6 +140,7 @@ class watcher(object):
         self.pw.append(pw)
 
     def check_baseline(self):
+        """Submit a build for baseline"""
         self.pj.append((sktm.jtype.BASELINE,
                         self.jk.build(self.jobname,
                                       baserepo = self.baserepo,
