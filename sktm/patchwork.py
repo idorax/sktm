@@ -498,8 +498,7 @@ class skt_patchwork(object):
             mpatch = int(smatch.group(2))
 
             if cpatch < 1 or cpatch > mpatch:
-                self.log_patch(patch)
-                result = ([self.patchurl(patch)], emails)
+                logging.info("skipping patch %d: %s", pid, pname)
                 if pid > self.lastpatch:
                     self.lastpatch = pid
                 return result
