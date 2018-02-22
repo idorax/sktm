@@ -95,6 +95,7 @@ class skt_db(object):
         c.close()
         tc.close()
 
+    # FIXME Creation and retrieval should be separate
     def get_repoid(self, baserepo):
         """
         Fetch or create an ID of a baseline Git repo URL.
@@ -117,6 +118,7 @@ class skt_db(object):
         self.conn.commit()
         return self.get_repoid(baserepo)
 
+    # FIXME Creation and retrieval should be separate
     def get_sourceid(self, baseurl, projid):
         """
         Fetch or create an ID of a patch source corresponding to a Patchwork

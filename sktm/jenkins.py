@@ -109,6 +109,8 @@ class skt_jenkins(object):
 
         logging.warning("Unknown status. marking as test failure")
         return sktm.tresult.TEST_FAILURE
+
+    # FIXME Clarify/fix argument names
     def build(self, jobname, baserepo = None, ref = None, baseconfig = None,
               patchwork = [], emails = set(), makeopts = None):
         """

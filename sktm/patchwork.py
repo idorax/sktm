@@ -24,6 +24,8 @@ import urllib
 import xmlrpclib
 import sktm
 
+# TODO Move common code to a common parent class
+
 SKIP_PATTERNS = [
         "\[[^\]]*iproute.*?\]",
         "\[[^\]]*pktgen.*?\]",
@@ -105,13 +107,16 @@ class skt_patchwork2(object):
         self.baseurl = baseurl
         # Last processed patch timestamp in a dateutil.parser.parse format
         self.since = since
+        # TODO Describe
         self.nsince = None
         # Patchwork API authentication token.
         self.apikey = apikey
+        # TODO Describe
         self.apiurls = self.get_apiurls()
         # A regular expression matching names of the patches to skip
         self.skp = re.compile("%s"  % "|".join(SKIP_PATTERNS),
                               re.IGNORECASE)
+        # TODO Describe
         self.project = None
 
         if projectname != None:
@@ -352,6 +357,7 @@ class skt_patchwork2(object):
 
         return patchsets
 
+    # FIXME The "db" argument is unused
     def get_new_patchsets(self, db = None):
         """
         Retrieve a list of info tuples for applicable (non-skipped) patchsets
@@ -362,6 +368,15 @@ class skt_patchwork2(object):
             patches comprising the patchset, and a list of e-mail addresses
             involved with the patchset.
         """
+        # TODO Figure out if adding a second is right here, since the API doc
+        # at https://patchwork-freedesktop.readthedocs.io/en/latest/rest.html
+        # says regarding "since" query parameter:
+        #
+        #   Retrieve only events newer than a specific time. Format is the
+        #   same as event_time in response, an ISO 8601 date. That means that
+        #   the event_time from the last seen event can be used in the next
+        #   query with a since parameter to only retrieve events that haven't
+        #   been seen yet.
         nsince = dateutil.parser.parse(self.since) + \
                   datetime.timedelta(seconds=1)
 
@@ -418,6 +433,7 @@ class skt_patchwork(object):
         # A regular expression matching names of the patches to skip
         self.skp = re.compile("%s"  % "|".join(SKIP_PATTERNS),
                               re.IGNORECASE)
+        # TODO Describe
         self.series = dict()
 
 
@@ -489,6 +505,8 @@ class skt_patchwork(object):
 
         Returns:
             The patch object as returned by XML RPC.
+            TODO document at least the fields we care about, Patchwork is not
+            likely to document the deprecated XML RPC interface for us.
         """
         if not self.fields:
             patch = self.rpc.patch_get(pid)
@@ -571,10 +589,12 @@ class skt_patchwork(object):
 
         raise Exception("Couldn't find project %s" % projectname)
 
+    # FIXME This doesn't just parse a patch. Name/refactor accordingly.
     def parse_patch(self, patch):
         """
         Extract the list of patch URLs and the list of involved e-mail
         addresses from a patchset object, if it is not supposed to be skipped.
+        TODO Describe the criteria.
 
         Args:
             patch   The patch object as returned by get_patch_by_id().
@@ -669,6 +689,7 @@ class skt_patchwork(object):
                 patchsets.append(pset)
         return patchsets
 
+    # TODO This shouldn't really skip patches to retrieve, should it?
     def get_patchsets(self, patchlist):
         """
         Retrieve a list of info tuples of applicable (non-skipped) patchsets

@@ -34,6 +34,7 @@ class jtype(enum.IntEnum):
     BASELINE = 0
     PATCHWORK = 1
 
+# TODO This is no longer just a watcher. Rename/refactor/describe accordingly.
 class watcher(object):
     def __init__(self, jenkinsurl, jenkinslogin, jenkinspassword,
                  jenkinsjobname, dbpath, makeopts = None):
@@ -49,6 +50,7 @@ class watcher(object):
             makeopts:           Extra arguments to pass to "make" when
                                 building.
         """
+        # FIXME Clarify/fix member variable names
         # Database instance
         self.db = sktm.db.skt_db(os.path.expanduser(dbpath))
         # Jenkins interface instance
@@ -83,6 +85,8 @@ class watcher(object):
         self.baseref = ref
         self.cfgurl = cfgurl
 
+    # FIXME The argument should not have a default
+    # FIXME This function should likely not exist
     def set_restapi(self, restapi = False):
         """
         Set the type of the next added Patchwork interface.
@@ -97,6 +101,7 @@ class watcher(object):
         for (pjt, bid, cpw) in self.pj:
             logging.warning("Quiting before job completion: %d/%d", bid, pjt)
 
+    # FIXME Pass patchwork type via arguments, or pass a whole interface
     def add_pw(self, baseurl, pname, lpatch = None, apikey = None):
         """
         Add a Patchwork interface with specified parameters.
@@ -139,6 +144,7 @@ class watcher(object):
                 pw.lastpatch = lpatch
         self.pw.append(pw)
 
+    # FIXME Fix the name, this function doesn't check anything by itself
     def check_baseline(self):
         """Submit a build for baseline"""
         self.pj.append((sktm.jtype.BASELINE,
@@ -166,6 +172,8 @@ class watcher(object):
                 for purl in patchset:
                     match = re.match("(.*)/patch/(\d+)$", purl)
                     if match:
+                        # TODO Shouldn't we be getting this from Patchwork in
+                        # the first place, when calling get_patchsets()?
                         pid = int(match.group(2))
                         patch = cpw.get_patch_by_id(pid)
                         pids.append((pid, patch.get("date").replace(" ", "T")))
