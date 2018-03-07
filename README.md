@@ -8,26 +8,29 @@ Usage
 -----
 At the moment sktm works through jenkins thus requiring a running jenkins
 instance and an account in that instance. Jenkins credentials can be passed
-through cmdline arguments (see --help) or rc file (defaults to ~/.sktmrc).
+through cmdline arguments (see `--help`) or rc file (defaults to `~/.sktmrc`).
 rcfile should look like this:
 
-  [config]
-  jurl = http://jenkins.baseurl.com:8080
-  jlogin = mylogin
-  jpass = mypassword
-  jjname = jenkinsjobname
+    [config]
+    jurl = http://jenkins.baseurl.com:8080
+    jlogin = mylogin
+    jpass = mypassword
+    jjname = jenkinsjobname
 
 Before testing any patches you need to establish a stable baseline, to test a
 specific ref run sktm like this:
-  sktm.py -v baseline git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git master
+
+    sktm.py -v baseline git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git master
 
 If that passes - you now have a baseline to apply the patches to. sktm imports
 patches from patchwork. By default all new patches since last run are tested,
-but since you don't have any "last run" yet you'll have to supply --lastpatch
-argument first time you import patches from a specific patchwork project:
-  sktm.py -v patchwork --lastpatch 839503 git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git https://patchwork.ozlabs.org netdev
+but since you don't have any "last run" yet you'll have to supply
+`--lastpatch` argument first time you import patches from a specific patchwork
+project:
 
-Next time --lastpatch can be omitted.
+    sktm.py -v patchwork --lastpatch 839503 git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git https://patchwork.ozlabs.org netdev
+
+Next time `--lastpatch` can be omitted.
 
 License
 -------
