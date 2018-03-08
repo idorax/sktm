@@ -301,7 +301,7 @@ class skt_patchwork2(object):
         r = requests.get(url)
 
         if r.status_code != 200:
-            raise Exception("Can't get series from url %s (%d)" % (url,
+            raise Exception("Can't get events from url %s (%d)" % (url,
                             r.status_code))
 
         edata = r.json()
