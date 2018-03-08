@@ -35,7 +35,7 @@ SKIP_PATTERNS = [
         "pull.?request"
 ]
 
-def stringfy(v):
+def stringify(v):
     """Convert any value to a str object
 
     xmlrpc is not consistent: sometimes the same field
@@ -642,7 +642,7 @@ class skt_patchwork(object):
             if subject is not None:
                 subject = subject.replace('\n\t', ' ').replace('\n', ' ')
             # TODO What happens when subject is None?
-            patch['name'] = stringfy(email.header.decode_header(subject)[0][0])
+            patch['name'] = stringify(email.header.decode_header(subject)[0][0])
 
         return patch
 
@@ -711,7 +711,7 @@ class skt_patchwork(object):
         emails = set()
         used_addr = list()
 
-        mboxdata = stringfy(self.rpc.patch_get_mbox(pid))
+        mboxdata = stringify(self.rpc.patch_get_mbox(pid))
         mbox = email.message_from_string(mboxdata)
 
         for header in ["From", "To", "Cc"]:
