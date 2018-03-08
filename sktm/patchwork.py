@@ -82,6 +82,7 @@ class RpcWrapper:
 
 
 class pwresult(enum.IntEnum):
+    """Patchwork state codes"""
     PENDING = 0
     SUCCESS = 1
     WARNING = 2
@@ -111,12 +112,13 @@ class skt_patchwork2(object):
         self.nsince = None
         # Patchwork API authentication token.
         self.apikey = apikey
-        # TODO Describe
+        # JSON representation of API URLs retrieved from the Patchwork server
         self.apiurls = self.get_apiurls()
         # A regular expression matching names of the patches to skip
         self.skp = re.compile("%s"  % "|".join(SKIP_PATTERNS),
                               re.IGNORECASE)
-        # TODO Describe
+        # JSON representation of the specified project (if any), retrieved
+        # from the Patchwork server
         self.project = None
 
         if projectname != None:
@@ -131,9 +133,28 @@ class skt_patchwork2(object):
         return self.nsince.isoformat() if self.nsince else None
 
     def patchurl(self, patch):
+        """
+        Retrieve a patch URL from a JSON patch object.
+
+        Args:
+            patch:  The JSON patch object to get URL from.
+
+        Returns:
+            URL of the patch.
+        """
         return "%s/patch/%d" % (self.baseurl, patch.get("id"))
 
     def get_project(self, pname):
+        """
+        Retrieve JSON representation of the specified project from the
+        Patchwork server.
+
+        Args:
+            pname:  The name of the project to retrieve.
+
+        Returns:
+            The JSON representation of the specified project.
+        """
         r = requests.get("%s/%s" % (self.apiurls.get("projects"), pname))
         if r.status_code != 200:
             raise Exception("Can't get project data: %s %d" % (pname,
@@ -141,6 +162,13 @@ class skt_patchwork2(object):
         return r.json()
 
     def get_apiurls(self):
+        """
+        Retrieve JSON representation of the list of API URLs supported by the
+        Patchwork server.
+
+        Returns:
+            The JSON representation of the API URLs.
+        """
         r = requests.get("%s/api/1.0" % self.baseurl)
         if r.status_code != 200:
             raise Exception("Can't get apiurls: %d" % r.status_code)
@@ -188,6 +216,18 @@ class skt_patchwork2(object):
         return emails
 
     def get_series_from_url(self, url):
+        """
+        Retrieve a list of info tuples of applicable (non-skipped) patchsets
+        for the specified patch series URL.
+
+        Args:
+            url:    The patch series URL to retrieve patchset info tuples for.
+
+        Returns:
+            A list of patchset info tuples, each containing a list of URLs of
+            patches comprising the patchset, and a list of e-mail addresses
+            involved with the patchset.
+        """
         patchsets = list()
 
         logging.debug("get_series_from_url %s", url)
@@ -217,6 +257,7 @@ class skt_patchwork2(object):
 
             logging.info("series: [%d] %s", series.get("id"),
                          series.get("name"))
+            # For each patch in series
             for patch in series.get("patches"):
                 logging.info("patch: [%d] %s", patch.get("id"),
                              patch.get("name"))
@@ -237,6 +278,18 @@ class skt_patchwork2(object):
         return patchsets
 
     def get_patchsets_from_events(self, url):
+        """
+        Retrieve a list of info tuples of applicable (non-skipped) patchsets
+        for the specified event list URL.
+
+        Args:
+            url:    The event list URL to retrieve patchset info tuples for.
+
+        Returns:
+            A list of patchset info tuples, each containing a list of URLs of
+            patches comprising the patchset, and a list of e-mail addresses
+            involved with the patchset.
+        """
         patchsets = list()
 
         logging.debug("get_patchsets_from_events: %s", url)
@@ -250,6 +303,7 @@ class skt_patchwork2(object):
         if type(edata) is not list:
             sdata = [edata]
 
+        # For each event
         for event in edata:
             series = event.get("payload", {}).get("series")
             if series == None:
@@ -271,6 +325,14 @@ class skt_patchwork2(object):
         return patchsets
 
     def _set_patch_check(self, patch, payload):
+        """
+        Add a patch "check" payload for the specified JSON representation of a
+        patch.
+
+        Args:
+            patch:      JSON representation of a patch to add the check for.
+            payload:    The "check" payload dictionary to be converted to JSON.
+        """
         r = requests.post(patch.get("checks"),
                           headers = { "Authorization" : "Token %s" % self.apikey,
                                       "Content-Type"  : "application/json" },
@@ -280,6 +342,16 @@ class skt_patchwork2(object):
             logging.warning("Failed to post patch check: %d" % r.status_code)
 
     def set_patch_check(self, pid, jurl, result):
+        """
+        Add a patch "check" for the specified patch, with the specified
+        Jenkins build URL and result (sktm.tresult).
+
+        Args:
+            pid:    The ID of the patch to add the "check" for.
+            jurl:   Jenkins build URL for the "check" to reference.
+            result: Test result (sktm.tresult) to feature in the "check"
+                    state.
+        """
         if self.apikey == None:
             logging.debug("No patchwork api key provided, not setting checks")
             return
@@ -320,6 +392,25 @@ class skt_patchwork2(object):
         return r.json()
 
     def get_patchsets_by_patch(self, url, db = None, seen = set()):
+        """
+        Retrieve a list of info tuples of applicable (non-skipped) patchsets,
+        which contain the patch or patches available at the specified URL, and
+        which weren't already tested.
+
+        Args:
+            url:    The URL pointing to a patch or a patch list to retrieve
+                    the list of patch series from.
+            db:     The optional database interface to retrieve "tested"
+                    status for the patch series from.
+            seen:   A set of IDs of patch series which should be ignored, and
+                    which should have patch series IDs added once they're
+                    processed.
+
+        Returns:
+            A list of patchset info tuples, each containing a list of URLs of
+            patches comprising the patchset, and a list of e-mail addresses
+            involved with the patchset.
+        """
         patchsets = list()
 
         logging.debug("get_patchsets_by_patch %s", url)
@@ -333,7 +424,9 @@ class skt_patchwork2(object):
         if type(pdata) is not list:
             pdata = [pdata]
 
+        # For each patch
         for patch in pdata:
+            # For each patch series the patch belongs to
             for series in patch.get("series"):
                 sid = series.get("id")
                 if (sid in seen):
@@ -388,15 +481,30 @@ class skt_patchwork2(object):
         return patchsets
 
     def get_patchsets(self, patchlist):
+        """
+        Retrieve a list of info tuples of applicable (non-skipped) patchsets
+        for a list of specified patch IDs.
+
+        Args:
+            patchlist:  List of patch IDs to retrieve info tuples for,
+                        or skip over.
+
+        Returns:
+            A list of patchset info tuples, each containing a list of URLs of
+            patches comprising the patchset, and a list of e-mail addresses
+            involved with the patchset.
+        """
         patchsets = list()
         seen = set()
 
         logging.debug("get_patchsets: %s", patchlist)
+        # For each patch ID
         for pid in patchlist:
             patch = self.get_patch_by_id(pid)
             if patch == None:
                 continue
 
+            # For each series the patch belongs to
             for series in patch.get("series"):
                 sid = series.get("id")
                 if sid not in seen:
@@ -442,6 +550,16 @@ class skt_patchwork(object):
         return None
 
     def get_rpc(self, baseurl):
+        """
+        Create an XML RPC interface for a Patchwork base URL and initialize
+        compatibility information.
+
+        Args:
+            baseurl:    Patchwork base URL to create the interface with.
+
+        Returns:
+            The XML RPC interface for the Patchwork
+        """
         rpc = xmlrpclib.ServerProxy("%s/xmlrpc/" % baseurl)
         try:
             ver = rpc.pw_rpc_version()
@@ -480,12 +598,30 @@ class skt_patchwork(object):
         return "%s/patch/%d" % (self.baseurl, patch.get("id"))
 
     def log_patch(self, patch):
+        """
+        Log patch ID and name.
+
+        Args:
+            patch:  The patch object, as returned by XML RPC, to log ID and
+                    name of.
+        """
         pid = patch.get("id")
         pname = patch.get("name")
 
         logging.info("%d: %s", pid, pname)
 
     def update_patch_name(self, patch):
+        """
+        Set patch name in a patch XML RPC object from its e-mail Subject, for
+        patches coming from internal Red Hat instance, where patch names are
+        apparently unsuitable.
+
+        Args:
+            patch:  The patch XML RPC object to set the name in.
+
+        Returns:
+            The possibly modified patch XML RPC object.
+        """
         if 'root_comment' in patch:
             # internal RH only: rewrite the original subject line
             e = email.message_from_string(patch['root_comment']['headers'])
@@ -523,6 +659,17 @@ class skt_patchwork(object):
         return patch
 
     def get_patch_list(self, filt):
+        """
+        Get a list of patch XML RPC objects, filtered according to the
+        specified filter dictionary.
+
+        Args:
+            filt:   The filter dictionary structured according to the XML RPC
+                    documentation.
+
+        Returns:
+            The list of patch XML RPC objects.
+        """
         if not self.fields:
             patches = self.rpc.patch_list(filt)
             return patches
@@ -571,15 +718,44 @@ class skt_patchwork(object):
         return emails
 
     def set_patch_check(self, pid, jurl, result):
+        """
+        Add a patch "check" for the specified patch, with the specified
+        Jenkins build URL and result (sktm.tresult).
+
+        Args:
+            pid:    The ID of the patch to add the "check" for.
+            jurl:   Jenkins build URL for the "check" to reference.
+            result: Test result (sktm.tresult) to feature in the "check"
+                    state.
+        """
         # TODO: Implement this for xmlrpc
         pass
 
     def dump_patch(self, pid):
+        """
+        Output the specified patch information to stdout.
+
+        Args:
+            pid:    The ID of the patch to dump.
+        """
         patch = self.get_patch_by_id(pid)
         print "pinfo=%s\n" % patch
         print "emails=%s\n" % self.get_patch_emails(pid)
 
     def get_projectid(self, projectname):
+        """
+        Retrieve ID of the project with the specified name.
+
+        Args:
+            projectname:    The name of the project to retrieve ID for.
+
+        Returns:
+            The project name.
+
+        Raises:
+            A string containing an error message, if the project with the
+            specified name was not found.
+        """
         plist = self.rpc.project_list(projectname)
         for project in plist:
             if project.get("linkname") == projectname:

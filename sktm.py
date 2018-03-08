@@ -20,6 +20,12 @@ import logging
 import sktm
 
 def setup_parser():
+    """
+    Create an sktm command line parser.
+
+    Returns:
+        The created parser.
+    """
     parser = argparse.ArgumentParser()
 
     parser.add_argument("-v", "--verbose", help="Increase verbosity level",
@@ -55,6 +61,12 @@ def setup_parser():
     return parser
 
 def setup_logging(verbose):
+    """
+    Setup the root logger.
+
+    Args:
+        verbose:    Verbosity level to setup log message filtering at.
+    """
     logger = logging.getLogger()
     logging.basicConfig(format="[%(process)d] %(asctime)s %(levelname)8s   %(message)s")
     logger.setLevel(logging.WARNING - (verbose * 10))
