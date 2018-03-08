@@ -124,14 +124,17 @@ class skt_patchwork2(object):
         if projectname != None:
             self.project = self.get_project(projectname)
 
+    # TODO Convert this to a simple function
     @property
     def projectid(self):
         return int(self.project.get("id"))
 
+    # TODO Convert this to a simple function
     @property
     def newsince(self):
         return self.nsince.isoformat() if self.nsince else None
 
+    # FIXME Rename to use a verb
     def patchurl(self, patch):
         """
         Retrieve a patch URL from a JSON patch object.
@@ -238,6 +241,7 @@ class skt_patchwork2(object):
                             r.status_code))
 
         sdata = r.json()
+        # TODO Why is this necessary?
         if type(sdata) is not list:
             sdata = [sdata]
 
@@ -273,6 +277,7 @@ class skt_patchwork2(object):
             m = re.match("<(.*)>; rel=\"next\"", link)
             if m:
                 nurl = m.group(1)
+                # TODO Limit recursion
                 patchsets += self.get_series_from_url(nurl)
 
         return patchsets
@@ -300,11 +305,13 @@ class skt_patchwork2(object):
                             r.status_code))
 
         edata = r.json()
+        # TODO Why is this necessary?
         if type(edata) is not list:
             sdata = [edata]
 
         # For each event
         for event in edata:
+            # TODO Are these the only possible events?
             series = event.get("payload", {}).get("series")
             if series == None:
                 continue
@@ -320,6 +327,7 @@ class skt_patchwork2(object):
             m = re.match("<(.*)>; rel=\"next\"", link)
             if m:
                 nurl = m.group(1)
+                # TODO Limit recursion
                 patchsets += self.get_patchsets_from_events(nurl)
 
         return patchsets
@@ -421,6 +429,7 @@ class skt_patchwork2(object):
                             r.status_code))
 
         pdata = r.json()
+        # TODO Why is this necessary?
         if type(pdata) is not list:
             pdata = [pdata]
 
@@ -446,6 +455,7 @@ class skt_patchwork2(object):
             m = re.match("<(.*)>; rel=\"next\"", link)
             if m:
                 nurl = m.group(1)
+                # TODO Limit recursion
                 patchsets += self.get_patchsets_by_patch(nurl, db, seen)
 
         return patchsets
@@ -480,6 +490,7 @@ class skt_patchwork2(object):
                                                   urllib.quote(nsince.isoformat())))
         return patchsets
 
+    # TODO This shouldn't really skip patches to retrieve, should it?
     def get_patchsets(self, patchlist):
         """
         Retrieve a list of info tuples of applicable (non-skipped) patchsets
@@ -545,10 +556,12 @@ class skt_patchwork(object):
         self.series = dict()
 
 
+    # TODO Convert this to a simple function
     @property
     def newsince(self):
         return None
 
+    # FIXME Just move this into __init__
     def get_rpc(self, baseurl):
         """
         Create an XML RPC interface for a Patchwork base URL and initialize
@@ -628,6 +641,7 @@ class skt_patchwork(object):
             subject = e.get('Subject')
             if subject is not None:
                 subject = subject.replace('\n\t', ' ').replace('\n', ' ')
+            # TODO What happens when subject is None?
             patch['name'] = stringfy(email.header.decode_header(subject)[0][0])
 
         return patch
@@ -742,6 +756,7 @@ class skt_patchwork(object):
         print "pinfo=%s\n" % patch
         print "emails=%s\n" % self.get_patch_emails(pid)
 
+    # TODO Move this to __init__ or make it a class method
     def get_projectid(self, projectname):
         """
         Retrieve ID of the project with the specified name.

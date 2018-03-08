@@ -28,6 +28,7 @@ class skt_jenkins(object):
             username:    Jenkins user name.
             password:    Jenkins user password.
         """
+        # TODO Add support for CSRF protection
         self.server = jenkinsapi.jenkins.Jenkins(url, username, password)
 
     def _wait_and_get_build(self, jobname, buildid):
