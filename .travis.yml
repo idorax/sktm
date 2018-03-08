@@ -1,0 +1,6 @@
+language: python
+python:
+    - "2.7"
+install:
+    - pip install enum34 dateutils requests junit_xml jenkinsapi beaker-client
+script: find -name '*.py' | xargs -l1 -IFILE python -c 'import imp; imp.load_source("", "FILE")'
