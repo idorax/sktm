@@ -228,7 +228,7 @@ class skt_patchwork2(object):
 
         Returns:
             A list of patchset info tuples, each containing a list of URLs of
-            patches comprising the patchset, and a list of e-mail addresses
+            patches comprising the patchset, and a set of e-mail addresses
             involved with the patchset.
         """
         patchsets = list()
@@ -292,7 +292,7 @@ class skt_patchwork2(object):
 
         Returns:
             A list of patchset info tuples, each containing a list of URLs of
-            patches comprising the patchset, and a list of e-mail addresses
+            patches comprising the patchset, and a set of e-mail addresses
             involved with the patchset.
         """
         patchsets = list()
@@ -416,7 +416,7 @@ class skt_patchwork2(object):
 
         Returns:
             A list of patchset info tuples, each containing a list of URLs of
-            patches comprising the patchset, and a list of e-mail addresses
+            patches comprising the patchset, and a set of e-mail addresses
             involved with the patchset.
         """
         patchsets = list()
@@ -468,7 +468,7 @@ class skt_patchwork2(object):
 
         Returns:
             A list of patchset info tuples, each containing a list of URLs of
-            patches comprising the patchset, and a list of e-mail addresses
+            patches comprising the patchset, and a set of e-mail addresses
             involved with the patchset.
         """
         # TODO Figure out if adding a second is right here, since the API doc
@@ -502,7 +502,7 @@ class skt_patchwork2(object):
 
         Returns:
             A list of patchset info tuples, each containing a list of URLs of
-            patches comprising the patchset, and a list of e-mail addresses
+            patches comprising the patchset, and a set of e-mail addresses
             involved with the patchset.
         """
         patchsets = list()
@@ -793,7 +793,7 @@ class skt_patchwork(object):
         Returns:
             None, if patch should be skipped, or a patchset info tuple,
             containing a list of URLs of patches comprising the patchset, and
-            a list of e-mail addresses involved with the patchset.
+            a set of e-mail addresses involved with the patchset.
         """
         pid = patch.get("id")
         pname = patch.get("name")
@@ -867,7 +867,7 @@ class skt_patchwork(object):
 
         Returns:
             A list of patchset info tuples, each containing a list of URLs of
-            patches comprising the patchset, and a list of e-mail addresses
+            patches comprising the patchset, and a set of e-mail addresses
             involved with the patchset.
         """
         patchsets = list()
@@ -892,7 +892,7 @@ class skt_patchwork(object):
 
         Returns:
             A list of patchset info tuples, each containing a list of URLs of
-            patches comprising the patchset, and a list of e-mail addresses
+            patches comprising the patchset, and a set of e-mail addresses
             involved with the patchset.
         """
         patchsets = list()
