@@ -42,6 +42,23 @@ class skt_jenkins(object):
         return build
 
     def get_cfg_data(self, jobname, buildid, stepname, cfgkey, default = None):
+        """
+        Get a value from a JSON-formatted output of a test result, of the
+        specified completed build for the specified project. Wait for the
+        build to complete, if it hasn't yet.
+
+        Args:
+            jobname:    Jenkins project name.
+            buildid:    Jenkins build ID.
+            stepname:   Test (step) path in the result, which output should be
+                        parsed as JSON.
+            cfgkey:     Name of the JSON key to retrieve value of.
+            default:    The default value to use if the key is not found.
+                        Optional, assumed None, if not specified.
+
+        Returns:
+            The key value, or the default if not found.
+        """
         build = self._wait_and_get_build(jobname, buildid)
 
         if not build.has_resultset():
@@ -55,14 +72,49 @@ class skt_jenkins(object):
                 return cfg.get(cfgkey, default)
 
     def get_base_commitdate(self, jobname, buildid):
+        """
+        Get base commit's committer date of the specified completed build for
+        the specified project. Wait for the build to complete, if it hasn't
+        yet.
+
+        Args:
+            jobname:    Jenkins project name.
+            buildid:    Jenkins build ID.
+
+        Return:
+            The epoch timestamp string of the committer date.
+        """
         return self.get_cfg_data(jobname, buildid, "skt.cmd_merge",
                                  "commitdate")
 
     def get_base_hash(self, jobname, buildid):
+        """
+        Get base commit's hash of the specified completed build for the
+        specified project. Wait for the build to complete, if it hasn't yet.
+
+        Args:
+            jobname:    Jenkins project name.
+            buildid:    Jenkins build ID.
+
+        Return:
+            The base commit's hash string.
+        """
         return self.get_cfg_data(jobname, buildid, "skt.cmd_merge",
                                  "basehead")
 
     def get_patchwork(self, jobname, buildid):
+        """
+        Get the list of Patchwork patch URLs for the specified completed build
+        for the specified project. Wait for the build to complete, if it
+        hasn't yet.
+
+        Args:
+            jobname:    Jenkins project name.
+            buildid:    Jenkins build ID.
+
+        Return:
+            The list of Patchwork patch URLs.
+        """
         return self.get_cfg_data(jobname, buildid, "skt.cmd_merge",
                                  "pw")
 
