@@ -25,6 +25,28 @@ import urllib
 import xmlrpclib
 import sktm
 
+
+class PatchsetSummary(object):
+    """A patchset summary"""
+
+    def __init__(self, email_addr_set, patch_url_list):
+        """
+        Initialize a patchset summary.
+
+        Args:
+            email_addr_set: A set of e-mail addresses involved with the
+                            patchset.
+            patch_url_list: A list of URLs pointing to Patchwork patch
+                            objects comprising the patchset, in order they
+                            should be applied in.
+        """
+        # A set of e-mail addresses involved with the patchset
+        self.email_addr_set = email_addr_set
+        # A list of URLs pointing to Patchwork patch objects comprising
+        # the patchset
+        self.patch_url_list = patch_url_list
+
+
 # TODO Move common code to a common parent class
 
 # TODO Supply this on Patchwork instance creation instead
@@ -219,18 +241,16 @@ class skt_patchwork2(object):
 
     def get_series_from_url(self, url):
         """
-        Retrieve a list of info tuples of applicable (non-skipped) patchsets
+        Retrieve a list of applicable (non-skipped) patchset summaries
         for the specified patch series, or patch series list URL.
         TODO Describe skipping criteria.
 
         Args:
             url:    The patch series, or patch series list URL to retrieve
-                    patchset info tuples for.
+                    patchset summaries for.
 
         Returns:
-            A list of patchset info tuples, each containing a list of URLs of
-            patches comprising the patchset, and a set of e-mail addresses
-            involved with the patchset.
+            A list of patchset summaries.
         """
         patchsets = list()
 
@@ -272,7 +292,7 @@ class skt_patchwork2(object):
             logging.info("---")
 
             if plist:
-                patchsets.append((plist, emails))
+                patchsets.append(PatchsetSummary(emails, plist))
 
         link = r.headers.get("Link")
         if link is not None:
@@ -286,16 +306,14 @@ class skt_patchwork2(object):
 
     def get_patchsets_from_events(self, url):
         """
-        Retrieve a list of info tuples of applicable (non-skipped) patchsets
-        for the specified event list URL.
+        Retrieve a list of applicable (non-skipped) patchset summaries for the
+        specified event list URL.
 
         Args:
-            url:    The event list URL to retrieve patchset info tuples for.
+            url:    The event list URL to retrieve patchset summaries for.
 
         Returns:
-            A list of patchset info tuples, each containing a list of URLs of
-            patches comprising the patchset, and a set of e-mail addresses
-            involved with the patchset.
+            A list of patchset summaries.
         """
         patchsets = list()
 
@@ -405,9 +423,9 @@ class skt_patchwork2(object):
 
     def get_patchsets_by_patch(self, url, db=None, seen=set()):
         """
-        Retrieve a list of info tuples of applicable (non-skipped) patchsets,
-        which contain the patch or patches available at the specified URL, and
-        which weren't already tested.
+        Retrieve a list of summaries of patchsets, which weren't already
+        "seen", and which contain the patch or patches available at the
+        specified URL.
 
         Args:
             url:    The URL pointing to a patch or a patch list to retrieve
@@ -419,9 +437,7 @@ class skt_patchwork2(object):
                     processed.
 
         Returns:
-            A list of patchset info tuples, each containing a list of URLs of
-            patches comprising the patchset, and a set of e-mail addresses
-            involved with the patchset.
+            A list of patchset summaries.
         """
         patchsets = list()
 
@@ -467,13 +483,10 @@ class skt_patchwork2(object):
 
     def get_new_patchsets(self):
         """
-        Retrieve a list of info tuples for applicable (non-skipped) patchsets
-        which haven't been processed yet.
+        Retrieve a list of summaries of applicable (non-skipped) patchsets.
 
         Returns:
-            A list of patchset info tuples, each containing a list of URLs of
-            patches comprising the patchset, and a set of e-mail addresses
-            involved with the patchset.
+            A list of patchset summaries.
         """
         # TODO Figure out if adding a second is right here, since the API doc
         # at https://patchwork-freedesktop.readthedocs.io/en/latest/rest.html
@@ -500,17 +513,15 @@ class skt_patchwork2(object):
     # TODO This shouldn't really skip patches to retrieve, should it?
     def get_patchsets(self, patchlist):
         """
-        Retrieve a list of info tuples of applicable (non-skipped) patchsets
-        for a list of specified patch IDs.
+        Retrieve a list of summaries of applicable (non-skipped) patchset for
+        the specified list of patch IDs.
 
         Args:
-            patchlist:  List of patch IDs to retrieve info tuples for,
+            patchlist:  List of patch IDs to retrieve patchset summaries for,
                         or skip over.
 
         Returns:
-            A list of patchset info tuples, each containing a list of URLs of
-            patches comprising the patchset, and a set of e-mail addresses
-            involved with the patchset.
+            A list of patchset summaries.
         """
         patchsets = list()
         seen = set()
@@ -795,7 +806,7 @@ class skt_patchwork(object):
         Accumulate an XML RPC patch object into the patch series dictionary,
         skipping patches with names matching skip regex (self.skp), and
         patches with invalid patchset positions. Update the maximum seen patch
-        ID (self.lastpatch). Return an info tuple for the patchset the patch
+        ID (self.lastpatch). Return a summary for the patchset the patch
         belongs to, if the supplied patch completes it (including single-patch
         "patchsets"). Patchset identification is unreliable.
 
@@ -803,10 +814,8 @@ class skt_patchwork(object):
             patch   An XML RPC patch object as returned by get_patch_by_id().
 
         Returns:
-            A patchset info tuple, or none, if patch is skipped or patchset is
-            not complete yet. The info tuple contains a list of URLs of
-            patches comprising the patchset, and a set of e-mail addresses
-            involved with the patchset.
+            A patchset summary, or none, if patch is skipped or patchset is
+            not complete yet.
         """
         pid = patch.get("id")
         pname = patch.get("name")
@@ -896,11 +905,11 @@ class skt_patchwork(object):
 
                 logging.info("emails: %s", eml)
                 logging.info("---")
-                result = (patchset, eml)
+                result = PatchsetSummary(eml, patchset)
         # Else, it's a single patch
         else:
             self.log_patch(patch)
-            result = ([self.patchurl(patch)], emails)
+            result = PatchsetSummary(emails, [self.patchurl(patch)])
 
         if pid > self.lastpatch:
             self.lastpatch = pid
@@ -909,14 +918,12 @@ class skt_patchwork(object):
 
     def get_new_patchsets(self):
         """
-        Retrieve a list of info tuples for any completed patchsets comprised
+        Retrieve a list of summaries for any completed patchsets comprised
         of patches with ID greater than the maximum seen patch ID
         (self.lastpatch). Update the maximum seen patch ID (self.lastpatch).
 
         Returns:
-            A list of patchset info tuples, each containing a list of URLs of
-            patches comprising the patchset, and a set of e-mail addresses
-            involved with the patchset.
+            A list of patchset summaries.
         """
         patchsets = list()
 
@@ -931,18 +938,16 @@ class skt_patchwork(object):
     # TODO This shouldn't really skip patches to retrieve, should it?
     def get_patchsets(self, patchlist):
         """
-        Retrieve a list of info tuples of any complete patchsets comprised by a
+        Retrieve a list of summaries of any complete patchsets comprised by a
         list of non-skipped patches with the specified IDs. Update the maximum
         seen patch ID (self.lastpatch).
 
         Args:
-            patchlist:  List of patch IDs to retrieve info tuples for,
+            patchlist:  List of patch IDs to retrieve patchset summaries for,
                         or skip over.
 
         Returns:
-            A list of patchset info tuples, each containing a list of URLs of
-            patches comprising the patchset, and a set of e-mail addresses
-            involved with the patchset.
+            A list of patchset summaries.
         """
         patchsets = list()
 

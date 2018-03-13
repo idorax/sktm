@@ -187,11 +187,11 @@ class watcher(object):
                     self.db.get_expired_pending_patches(cpw.baseurl,
                                                         cpw.projectid, 43200))
             # For each patchset summary
-            for (patchset, emails) in patchsets:
+            for patchset in patchsets:
                 # Create an empty list of patch ID and patch date tuples
                 pids = list()
                 # For each Patchwork patch URL in the patchset
-                for purl in patchset:
+                for purl in patchset.patch_url_list:
                     # If patch ID can be extracted from the URL
                     match = re.match(r"(.*)/patch/(\d+)$", purl)
                     if match:
@@ -206,16 +206,17 @@ class watcher(object):
                                              pids)
                 # Submit and remember a Jenkins build for the patchset
                 self.pj.append((sktm.jtype.PATCHWORK,
-                                self.jk.build(self.jobname,
-                                              baserepo=self.baserepo,
-                                              ref=stablecommit,
-                                              baseconfig=self.cfgurl,
-                                              patchwork=patchset,
-                                              emails=emails,
-                                              makeopts=self.makeopts),
+                                self.jk.build(
+                                    self.jobname,
+                                    baserepo=self.baserepo,
+                                    ref=stablecommit,
+                                    baseconfig=self.cfgurl,
+                                    emails=patchset.email_addr_set,
+                                    patchwork=patchset.patch_url_list,
+                                    makeopts=self.makeopts),
                                 cpw))
-                logging.info("submitted patchset: %s", patchset)
-                logging.debug("emails: %s", emails)
+                logging.info("submitted emails: %s", patchset.email_addr_set)
+                logging.info("submitted patchset: %s", patchset.patch_url_list)
 
     def check_pending(self):
         for (pjt, bid, cpw) in self.pj:
