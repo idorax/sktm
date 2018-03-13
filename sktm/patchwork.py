@@ -707,7 +707,7 @@ class skt_patchwork(object):
             pid:    ID of the patch to get e-mails for.
 
         Returns:
-            A set of e-mail addresses
+            A set of e-mail addresses.
         """
         emails = set()
         used_addr = list()
