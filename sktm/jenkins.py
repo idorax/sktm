@@ -102,6 +102,7 @@ class skt_jenkins(object):
         return self.get_cfg_data(jobname, buildid, "skt.cmd_merge",
                                  "basehead")
 
+    # FIXME Clarify function name
     def get_patchwork(self, jobname, buildid):
         """
         Get the list of Patchwork patch URLs for the specified completed build

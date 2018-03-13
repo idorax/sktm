@@ -598,6 +598,7 @@ class skt_patchwork(object):
 
         return rpc
 
+    # FIXME Use a verb in the name
     def patchurl(self, patch):
         """
         Format a URL for a patch object.
