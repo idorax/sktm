@@ -1,15 +1,16 @@
-# Copyright (c) 2017 Red Hat, Inc. All rights reserved. This copyrighted material
-# is made available to anyone wishing to use, modify, copy, or
+# Copyright (c) 2017 Red Hat, Inc. All rights reserved. This copyrighted
+# material is made available to anyone wishing to use, modify, copy, or
 # redistribute it subject to the terms and conditions of the GNU General
 # Public License v.2 or later.
 #
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-# PARTICULAR PURPOSE. See the GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+# details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+# along with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 import datetime
 import dateutil.parser
@@ -35,6 +36,7 @@ SKIP_PATTERNS = [
         "pull.?request"
 ]
 
+
 def stringify(v):
     """Convert any value to a str object
 
@@ -49,26 +51,29 @@ def stringify(v):
     else:
         return str(v)
 
-#Internal RH PatchWork adds a magic API version with each call
-#this class just magically adds/removes it
+
+# Internal RH PatchWork adds a magic API version with each call
+# this class just magically adds/removes it
 class RpcWrapper:
     def __init__(self, real_rpc):
         self.rpc = real_rpc
-        #patchwork api coded to
+        # patchwork api coded to
         self.version = 1010
 
     def _wrap_call(self, rpc, name):
-        #Wrap a RPC call, adding the expected version number as argument
+        # Wrap a RPC call, adding the expected version number as argument
         fn = getattr(rpc, name)
+
         def wrapper(*args, **kwargs):
             return fn(self.version, *args, **kwargs)
         return wrapper
 
     def _return_check(self, r):
-        #Returns just the real return value, without the version info.
+        # Returns just the real return value, without the version info.
         v = self.version
         if r[0] != v:
-            raise RpcProtocolMismatch('Patchwork API mismatch (%i, expected %i)' % (r[0], v))
+            raise RpcProtocolMismatch('Patchwork API mismatch (%i, '
+                                      'expected %i)' % (r[0], v))
         return r[1]
 
     def _return_unwrapper(self, fn):
@@ -77,7 +82,7 @@ class RpcWrapper:
         return unwrap
 
     def __getattr__(self, name):
-        #Add the RPC version checking call/return wrappers
+        # Add the RPC version checking call/return wrappers
         return self._return_unwrapper(self._wrap_call(self.rpc, name))
 
 
@@ -88,11 +93,12 @@ class pwresult(enum.IntEnum):
     WARNING = 2
     FAILURE = 3
 
+
 class skt_patchwork2(object):
     """
     A Patchwork REST interface
     """
-    def __init__(self, baseurl, projectname, since, apikey = None):
+    def __init__(self, baseurl, projectname, since, apikey=None):
         """
         Initialize a Patchwork REST interface.
 
@@ -115,13 +121,12 @@ class skt_patchwork2(object):
         # JSON representation of API URLs retrieved from the Patchwork server
         self.apiurls = self.get_apiurls()
         # A regular expression matching names of the patches to skip
-        self.skp = re.compile("%s"  % "|".join(SKIP_PATTERNS),
-                              re.IGNORECASE)
+        self.skp = re.compile("%s" % "|".join(SKIP_PATTERNS), re.IGNORECASE)
         # JSON representation of the specified project (if any), retrieved
         # from the Patchwork server
         self.project = None
 
-        if projectname != None:
+        if projectname is not None:
             self.project = self.get_project(projectname)
 
     # TODO Convert this to a simple function
@@ -202,7 +207,7 @@ class skt_patchwork2(object):
         headers = pdata.get("headers")
 
         for header in ["From", "To", "Cc"]:
-            if headers.get(header) == None:
+            if headers.get(header) is None:
                 continue
             for faddr in [x.strip() for x in headers.get(header).split(",")]:
                 logging.debug("patch=%d; header=%s; email=%s", pid, header,
@@ -249,7 +254,7 @@ class skt_patchwork2(object):
             plist = list()
             emails = set()
 
-            if series.get("received_all") == False:
+            if not series.get("received_all"):
                 logging.info("skipping incomplete series: [%d] %s",
                              series.get("id"), series.get("name"))
                 continue
@@ -273,7 +278,7 @@ class skt_patchwork2(object):
                 patchsets.append((plist, emails))
 
         link = r.headers.get("Link")
-        if link != None:
+        if link is not None:
             m = re.match("<(.*)>; rel=\"next\"", link)
             if m:
                 nurl = m.group(1)
@@ -313,17 +318,17 @@ class skt_patchwork2(object):
         for event in edata:
             # TODO Are these the only possible events?
             series = event.get("payload", {}).get("series")
-            if series == None:
+            if series is None:
                 continue
 
             edate = dateutil.parser.parse(event.get("date"))
-            if self.nsince == None or self.nsince < edate:
+            if self.nsince is None or self.nsince < edate:
                 self.nsince = edate
 
             patchsets += self.get_series_from_url(series.get("url"))
 
         link = r.headers.get("Link")
-        if link != None:
+        if link is not None:
             m = re.match("<(.*)>; rel=\"next\"", link)
             if m:
                 nurl = m.group(1)
@@ -342,9 +347,9 @@ class skt_patchwork2(object):
             payload:    The "check" payload dictionary to be converted to JSON.
         """
         r = requests.post(patch.get("checks"),
-                          headers = { "Authorization" : "Token %s" % self.apikey,
-                                      "Content-Type"  : "application/json" },
-                          data = json.dumps(payload))
+                          headers={"Authorization": "Token %s" % self.apikey,
+                                   "Content-Type": "application/json"},
+                          data=json.dumps(payload))
 
         if r.status_code not in [200, 201]:
             logging.warning("Failed to post patch check: %d" % r.status_code)
@@ -360,20 +365,21 @@ class skt_patchwork2(object):
             result: Test result (sktm.tresult) to feature in the "check"
                     state.
         """
-        if self.apikey == None:
+        if self.apikey is None:
             logging.debug("No patchwork api key provided, not setting checks")
             return
 
-        payload = { 'patch' : pid,
-                    'state' : None,
-                    'target_url' : jurl,
-                    'context' : 'skt',
-                    'description' : 'skt boot test' }
+        payload = {'patch': pid,
+                   'state': None,
+                   'target_url': jurl,
+                   'context': 'skt',
+                   'description': 'skt boot test'}
         if result == sktm.tresult.SUCCESS:
             payload['state'] = int(pwresult.SUCCESS)
         elif result == sktm.tresult.BASELINE_FAILURE:
             payload['state'] = int(pwresult.WARNING)
-            payload['description'] = 'Baseline failure found while testing this patch'
+            payload['description'] = 'Baseline failure found while testing '
+            'this patch'
         else:
             payload['state'] = int(pwresult.FAILURE)
             payload['description'] = str(result)
@@ -399,7 +405,7 @@ class skt_patchwork2(object):
 
         return r.json()
 
-    def get_patchsets_by_patch(self, url, db = None, seen = set()):
+    def get_patchsets_by_patch(self, url, db=None, seen=set()):
         """
         Retrieve a list of info tuples of applicable (non-skipped) patchsets,
         which contain the patch or patches available at the specified URL, and
@@ -440,18 +446,20 @@ class skt_patchwork2(object):
                 sid = series.get("id")
                 if (sid in seen):
                     continue
-                elif (db != None and db.get_series_result(sid) != None):
+                elif (db is not None and
+                      db.get_series_result(sid) is not None):
                     logging.info("skipping already tested series: [%d] %s",
                                  sid, series.get("name"))
                     continue
                 else:
-                    patchsets += self.get_series_from_url("%s/%d" %
-                                                  (self.apiurls.get("series"),
-                                                  sid))
+                    patchsets += self.get_series_from_url("%s/%d" % (
+                        self.apiurls.get("series"),
+                        sid
+                    ))
                     seen.add(sid)
 
         link = r.headers.get("Link")
-        if link != None:
+        if link is not None:
             m = re.match("<(.*)>; rel=\"next\"", link)
             if m:
                 nurl = m.group(1)
@@ -461,7 +469,7 @@ class skt_patchwork2(object):
         return patchsets
 
     # FIXME The "db" argument is unused
-    def get_new_patchsets(self, db = None):
+    def get_new_patchsets(self, db=None):
         """
         Retrieve a list of info tuples for applicable (non-skipped) patchsets
         which haven't been processed yet.
@@ -480,14 +488,17 @@ class skt_patchwork2(object):
         #   the event_time from the last seen event can be used in the next
         #   query with a since parameter to only retrieve events that haven't
         #   been seen yet.
-        nsince = dateutil.parser.parse(self.since) + \
-                  datetime.timedelta(seconds=1)
+        nsince = dateutil.parser.parse(
+            self.since
+        ) + datetime.timedelta(seconds=1)
 
         logging.debug("get_new_patchsets since %s", nsince.isoformat())
         patchsets = self.get_patchsets_by_patch("%s?project=%d&since=%s" %
-                                                 (self.apiurls.get("patches"),
-                                                  self.projectid,
-                                                  urllib.quote(nsince.isoformat())))
+                                                (self.apiurls.get("patches"),
+                                                 self.projectid,
+                                                 urllib.quote(
+                                                     nsince.isoformat()
+                                                 )))
         return patchsets
 
     # TODO This shouldn't really skip patches to retrieve, should it?
@@ -512,19 +523,21 @@ class skt_patchwork2(object):
         # For each patch ID
         for pid in patchlist:
             patch = self.get_patch_by_id(pid)
-            if patch == None:
+            if patch is None:
                 continue
 
             # For each series the patch belongs to
             for series in patch.get("series"):
                 sid = series.get("id")
                 if sid not in seen:
-                    patchsets += self.get_series_from_url("%s/%d" %
-                                                  (self.apiurls.get("series"),
-                                                  sid))
+                    patchsets += self.get_series_from_url("%s/%d" % (
+                        self.apiurls.get("series"),
+                        sid
+                    ))
                     seen.add(sid)
 
         return patchsets
+
 
 class skt_patchwork(object):
     """
@@ -546,15 +559,15 @@ class skt_patchwork(object):
         # Base Patchwork URL
         self.baseurl = baseurl
         # ID of the project, if project name is supplied, otherwise None
-        self.projectid = self.get_projectid(projectname) if projectname else None
+        self.projectid = self.get_projectid(
+            projectname
+        ) if projectname else None
         # Last processed patch ID
         self.lastpatch = lastpatch
         # A regular expression matching names of the patches to skip
-        self.skp = re.compile("%s"  % "|".join(SKIP_PATTERNS),
-                              re.IGNORECASE)
+        self.skp = re.compile("%s" % "|".join(SKIP_PATTERNS), re.IGNORECASE)
         # TODO Describe
         self.series = dict()
-
 
     # TODO Convert this to a simple function
     @property
@@ -577,7 +590,7 @@ class skt_patchwork(object):
         try:
             ver = rpc.pw_rpc_version()
             # check for normal patchwork1 xmlrpc version numbers
-            if not (ver == [1,3,0] or ver == 1):
+            if not (ver == [1, 3, 0] or ver == 1):
                 raise Exception("Unknown xmlrpc version %s", ver)
 
         except xmlrpclib.Fault as err:
@@ -590,11 +603,11 @@ class skt_patchwork(object):
                     raise Exception("Unsupported xmlrpc version %s", ver)
 
                 # grab extra info for later parsing
-                self.fields = [ 'id', 'name', 'submitter', 'msgid', \
-                                ['root_comment', ['headers']], 'date', \
-                                'project_id' ]
+                self.fields = ['id', 'name', 'submitter', 'msgid',
+                               ['root_comment', ['headers']],
+                               'date', 'project_id']
             else:
-                 raise Exception("Unknown xmlrpc fault: %s", err.faultString)
+                raise Exception("Unknown xmlrpc fault: %s", err.faultString)
 
         return rpc
 
@@ -643,7 +656,9 @@ class skt_patchwork(object):
             if subject is not None:
                 subject = subject.replace('\n\t', ' ').replace('\n', ' ')
             # TODO What happens when subject is None?
-            patch['name'] = stringify(email.header.decode_header(subject)[0][0])
+            patch['name'] = stringify(
+                email.header.decode_header(subject)[0][0]
+            )
 
         return patch
 
@@ -665,7 +680,7 @@ class skt_patchwork(object):
             # internal RH only: special hook to get original subject line
             patch = self.rpc.patch_get(pid, self.fields)
 
-        if patch == None or patch == {}:
+        if patch is None or patch == {}:
             logging.warning("Failed to get data for patch %d", pid)
             patch = None
 
@@ -716,7 +731,7 @@ class skt_patchwork(object):
         mbox = email.message_from_string(mboxdata)
 
         for header in ["From", "To", "Cc"]:
-            if mbox[header] == None:
+            if mbox[header] is None:
                 continue
             for faddr in [x.strip() for x in mbox[header].split(",")]:
                 logging.debug("patch=%d; header=%s; email=%s", pid, header,
@@ -874,10 +889,10 @@ class skt_patchwork(object):
         patchsets = list()
 
         logging.debug("get_new_patchsets: %d", self.lastpatch)
-        for patch in self.get_patch_list({'project_id' : self.projectid,
+        for patch in self.get_patch_list({'project_id': self.projectid,
                                           'id__gt': self.lastpatch}):
             pset = self.parse_patch(patch)
-            if pset != None:
+            if pset is not None:
                 patchsets.append(pset)
         return patchsets
 
@@ -901,10 +916,10 @@ class skt_patchwork(object):
         logging.debug("get_patchsets: %s", patchlist)
         for pid in patchlist:
             patch = self.get_patch_by_id(pid)
-            if patch == None:
+            if patch is None:
                 continue
 
             pset = self.parse_patch(patch)
-            if pset != None:
+            if pset is not None:
                 patchsets.append(pset)
         return patchsets

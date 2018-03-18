@@ -1,15 +1,16 @@
-# Copyright (c) 2017 Red Hat, Inc. All rights reserved. This copyrighted material
-# is made available to anyone wishing to use, modify, copy, or
+# Copyright (c) 2017 Red Hat, Inc. All rights reserved. This copyrighted
+# material is made available to anyone wishing to use, modify, copy, or
 # redistribute it subject to the terms and conditions of the GNU General
 # Public License v.2 or later.
 #
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-# PARTICULAR PURPOSE. See the GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+# details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+# along with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 import jenkinsapi
 import json
@@ -17,9 +18,10 @@ import logging
 import time
 import sktm
 
+
 class skt_jenkins(object):
     """Jenkins interface"""
-    def __init__(self, url, username = None, password = None):
+    def __init__(self, url, username=None, password=None):
         """
         Initialize a Jenkins interface.
 
@@ -41,7 +43,7 @@ class skt_jenkins(object):
 
         return build
 
-    def get_cfg_data(self, jobname, buildid, stepname, cfgkey, default = None):
+    def get_cfg_data(self, jobname, buildid, stepname, cfgkey, default=None):
         """
         Get a value from a JSON-formatted output of a test result, of the
         specified completed build for the specified project. Wait for the
@@ -141,7 +143,8 @@ class skt_jenkins(object):
                             build.get_status()))
 
         if bstatus == "UNSTABLE" and \
-                (build.get_resultset()["skt.cmd_run"].status in  ["PASSED", "FIXED"]):
+                (build.get_resultset()["skt.cmd_run"].status in
+                 ["PASSED", "FIXED"]):
             if self.get_baseretcode(jobname, buildid) != 0:
                 logging.warning("baseline failure found during patch testing")
                 return sktm.tresult.BASELINE_FAILURE
@@ -165,8 +168,8 @@ class skt_jenkins(object):
         return sktm.tresult.TEST_FAILURE
 
     # FIXME Clarify/fix argument names
-    def build(self, jobname, baserepo = None, ref = None, baseconfig = None,
-              patchwork = [], emails = set(), makeopts = None):
+    def build(self, jobname, baserepo=None, ref=None, baseconfig=None,
+              patchwork=[], emails=set(), makeopts=None):
         """
         Submit a build of a patchset.
 
@@ -185,16 +188,16 @@ class skt_jenkins(object):
             Submitted build number.
         """
         params = dict()
-        if baserepo != None:
+        if baserepo is not None:
             params["baserepo"] = baserepo
 
-        if ref != None:
+        if ref is not None:
             params["ref"] = ref
 
-        if baseconfig != None:
+        if baseconfig is not None:
             params["baseconfig"] = baseconfig
 
-        if makeopts != None:
+        if makeopts is not None:
             params["makeopts"] = makeopts
 
         if len(patchwork) > 0:
@@ -219,8 +222,8 @@ class skt_jenkins(object):
 
     def _params_eq(self, build, params):
         result = True
-        if build == None or build.get_actions() == None or \
-                build.get_actions().get("parameters") == None:
+        if build is None or build.get_actions() is None or \
+                build.get_actions().get("parameters") is None:
             return False
 
         for param in build.get_actions().get("parameters"):
@@ -231,7 +234,7 @@ class skt_jenkins(object):
 
         return result
 
-    def find_build(self, jobname, params, eid = None):
+    def find_build(self, jobname, params, eid=None):
         job = self.server.get_job(jobname)
 
         try:
@@ -239,14 +242,14 @@ class skt_jenkins(object):
         except jenkinsapi.custom_exceptions.NoBuildData:
             lbuild = None
 
-        while lbuild == None:
+        while lbuild is None:
             time.sleep(1)
             try:
                 lbuild = job.get_last_build()
             except jenkinsapi.custom_exceptions.NoBuildData:
                 lbuild = None
 
-        if eid != None:
+        if eid is not None:
             while lbuild.get_number() < eid:
                 time.sleep(1)
                 lbuild = job.get_last_build()

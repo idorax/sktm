@@ -1,15 +1,16 @@
-# Copyright (c) 2017 Red Hat, Inc. All rights reserved. This copyrighted material
-# is made available to anyone wishing to use, modify, copy, or
+# Copyright (c) 2017 Red Hat, Inc. All rights reserved. This copyrighted
+# material is made available to anyone wishing to use, modify, copy, or
 # redistribute it subject to the terms and conditions of the GNU General
 # Public License v.2 or later.
 #
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-# PARTICULAR PURPOSE. See the GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+# details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+# along with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 import enum
 import logging
@@ -20,6 +21,7 @@ import sktm.db
 import sktm.jenkins
 import sktm.patchwork
 
+
 class tresult(enum.IntEnum):
     """Test result"""
     SUCCESS = 0
@@ -29,15 +31,17 @@ class tresult(enum.IntEnum):
     TEST_FAILURE = 4
     BASELINE_FAILURE = 5
 
+
 class jtype(enum.IntEnum):
     """Job type"""
     BASELINE = 0
     PATCHWORK = 1
 
+
 # TODO This is no longer just a watcher. Rename/refactor/describe accordingly.
 class watcher(object):
     def __init__(self, jenkinsurl, jenkinslogin, jenkinspassword,
-                 jenkinsjobname, dbpath, makeopts = None):
+                 jenkinsjobname, dbpath, makeopts=None):
         """
         Initialize a "watcher".
 
@@ -72,7 +76,7 @@ class watcher(object):
         # False if XML RPC-based Patchwork interfaces should be created
         self.restapi = False
 
-    def set_baseline(self, repo, ref = "master", cfgurl = None):
+    def set_baseline(self, repo, ref="master", cfgurl=None):
         """
         Set baseline parameters.
 
@@ -87,7 +91,7 @@ class watcher(object):
 
     # FIXME The argument should not have a default
     # FIXME This function should likely not exist
-    def set_restapi(self, restapi = False):
+    def set_restapi(self, restapi=False):
         """
         Set the type of the next added Patchwork interface.
 
@@ -102,7 +106,7 @@ class watcher(object):
             logging.warning("Quiting before job completion: %d/%d", bid, pjt)
 
     # FIXME Pass patchwork type via arguments, or pass a whole interface
-    def add_pw(self, baseurl, pname, lpatch = None, apikey = None):
+    def add_pw(self, baseurl, pname, lpatch=None, apikey=None):
         """
         Add a Patchwork interface with specified parameters.
         Add an XML RPC-based interface, if self.restapi is false,
@@ -120,26 +124,28 @@ class watcher(object):
         if self.restapi:
             pw = sktm.patchwork.skt_patchwork2(baseurl, pname, lpatch, apikey)
 
-            if lpatch == None:
+            if lpatch is None:
                 lcdate = self.db.get_last_checked_patch_date(baseurl,
                                                              pw.projectid)
                 lpdate = self.db.get_last_pending_patch_date(baseurl,
                                                              pw.projectid)
                 since = max(lcdate, lpdate)
-                if since == None:
-                    raise Exception("%s project: %s was never tested before, please provide initial patch id" %
+                if since is None:
+                    raise Exception("%s project: %s was never tested before, "
+                                    "please provide initial patch id" %
                                     (baseurl, pname))
                 pw.since = since
         else:
             pw = sktm.patchwork.skt_patchwork(baseurl, pname,
                                               int(lpatch) if lpatch else None)
 
-            if lpatch == None:
+            if lpatch is None:
                 lcpatch = self.db.get_last_checked_patch(baseurl, pw.projectid)
                 lppatch = self.db.get_last_pending_patch(baseurl, pw.projectid)
                 lpatch = max(lcpatch, lppatch)
-                if lpatch == None:
-                    raise Exception("%s project: %s was never tested before, please provide initial patch id" %
+                if lpatch is None:
+                    raise Exception("%s project: %s was never tested before, "
+                                    "please provide initial patch id" %
                                     (baseurl, pname))
                 pw.lastpatch = lpatch
         self.pw.append(pw)
@@ -149,17 +155,17 @@ class watcher(object):
         """Submit a build for baseline"""
         self.pj.append((sktm.jtype.BASELINE,
                         self.jk.build(self.jobname,
-                                      baserepo = self.baserepo,
-                                      ref = self.baseref,
-                                      baseconfig = self.cfgurl,
-                                      makeopts = self.makeopts),
+                                      baserepo=self.baserepo,
+                                      ref=self.baseref,
+                                      baseconfig=self.cfgurl,
+                                      makeopts=self.makeopts),
                         None))
 
     def check_patchwork(self):
         stablecommit = self.db.get_stable(self.baserepo)
-        if stablecommit == None:
+        if stablecommit is None:
             raise Exception("No known stable baseline for repo %s" %
-                    self.baserepo)
+                            self.baserepo)
 
         logging.info("stable commit for %s is %s", self.baserepo, stablecommit)
         for cpw in self.pw:
@@ -182,12 +188,12 @@ class watcher(object):
                                              pids)
                 self.pj.append((sktm.jtype.PATCHWORK,
                                 self.jk.build(self.jobname,
-                                              baserepo = self.baserepo,
-                                              ref = stablecommit,
-                                              baseconfig = self.cfgurl,
-                                              patchwork = patchset,
-                                              emails = emails,
-                                              makeopts = self.makeopts),
+                                              baserepo=self.baserepo,
+                                              ref=stablecommit,
+                                              baseconfig=self.cfgurl,
+                                              patchwork=patchset,
+                                              emails=emails,
+                                              makeopts=self.makeopts),
                                 cpw))
                 logging.info("submitted patchset: %s", patchset)
                 logging.debug("emails: %s", emails)
@@ -198,11 +204,13 @@ class watcher(object):
                 logging.info("job completed: jjid=%d; type=%d", bid, pjt)
                 self.pj.remove((pjt, bid, cpw))
                 if pjt == sktm.jtype.BASELINE:
-                    self.db.update_baseline(self.baserepo,
-                            self.jk.get_base_hash(self.jobname, bid),
-                            self.jk.get_base_commitdate(self.jobname, bid),
-                            self.jk.get_result(self.jobname, bid),
-                            bid)
+                    self.db.update_baseline(
+                        self.baserepo,
+                        self.jk.get_base_hash(self.jobname, bid),
+                        self.jk.get_base_commitdate(self.jobname, bid),
+                        self.jk.get_result(self.jobname, bid),
+                        bid
+                    )
                 elif pjt == sktm.jtype.PATCHWORK:
                     patches = list()
                     slist = list()
@@ -214,11 +222,13 @@ class watcher(object):
                     basehash = self.jk.get_base_hash(self.jobname, bid)
                     logging.info("basehash=%s", basehash)
                     if bres == sktm.tresult.BASELINE_FAILURE:
-                        self.db.update_baseline(self.baserepo,
-                                basehash,
-                                self.jk.get_base_commitdate(self.jobname, bid),
-                                sktm.tresult.TEST_FAILURE,
-                                bid)
+                        self.db.update_baseline(
+                            self.baserepo,
+                            basehash,
+                            self.jk.get_base_commitdate(self.jobname, bid),
+                            sktm.tresult.TEST_FAILURE,
+                            bid
+                        )
 
                     patchset = self.jk.get_patchwork(self.jobname, bid)
                     for purl in patchset:
@@ -227,7 +237,7 @@ class watcher(object):
                             baseurl = match.group(1)
                             pid = int(match.group(2))
                             patch = cpw.get_patch_by_id(pid)
-                            if patch == None:
+                            if patch is None:
                                 continue
                             logging.info("patch: [%d] %s", pid,
                                          patch.get("name"))
@@ -239,7 +249,8 @@ class watcher(object):
                                 projid = int(patch.get("project_id"))
                             patches.append((pid, patch.get("name"), purl,
                                             baseurl, projid,
-                                            patch.get("date").replace(" ", "T")))
+                                            patch.get("date").replace(" ",
+                                                                      "T")))
                             cpw.set_patch_check(pid, rurl, bres)
                         else:
                             raise Exception("Malfomed patch url: %s" % purl)
