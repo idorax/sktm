@@ -219,10 +219,12 @@ class skt_patchwork2(object):
     def get_series_from_url(self, url):
         """
         Retrieve a list of info tuples of applicable (non-skipped) patchsets
-        for the specified patch series URL.
+        for the specified patch series, or patch series list URL.
+        TODO Describe skipping criteria.
 
         Args:
-            url:    The patch series URL to retrieve patchset info tuples for.
+            url:    The patch series, or patch series list URL to retrieve
+                    patchset info tuples for.
 
         Returns:
             A list of patchset info tuples, each containing a list of URLs of
@@ -541,8 +543,7 @@ class skt_patchwork(object):
         Args:
             baseurl:        Patchwork base URL.
             projectname:    Patchwork project name, or None.
-            lastpatch:      Last processed patch ID.
-                            Patches with this or lower ID will be ignored.
+            lastpatch:      Maximum processed patch ID to start with.
         """
         self.fields = None
         # XML RPC interface to Patchwork
@@ -553,11 +554,16 @@ class skt_patchwork(object):
         self.projectid = self.get_projectid(
             projectname
         ) if projectname else None
-        # Last processed patch ID
+        # Maximum processed patch ID
         self.lastpatch = lastpatch
         # A regular expression matching names of the patches to skip
         self.skp = re.compile("%s" % "|".join(SKIP_PATTERNS), re.IGNORECASE)
-        # TODO Describe
+        # A dictionary of patch series identified by a "series ID".
+        # Series ID is an opaque string generated from patch properties
+        # (such as message ID, submitter ID, etc.) and representing (not
+        # necessarily uniquely) a patch series. Each patch series is a
+        # dictionary of XML RPC patch objects identified by the patch's
+        # position in the series (extracted from the message subject).
         self.series = dict()
 
     # TODO Convert this to a simple function
@@ -785,17 +791,21 @@ class skt_patchwork(object):
     # FIXME This doesn't just parse a patch. Name/refactor accordingly.
     def parse_patch(self, patch):
         """
-        Extract the list of patch URLs and the list of involved e-mail
-        addresses from a patchset object, if it is not supposed to be skipped.
-        TODO Describe the criteria.
+        Accumulate an XML RPC patch object into the patch series dictionary,
+        skipping patches with names matching skip regex (self.skp), and
+        patches with invalid patchset positions. Update the maximum seen patch
+        ID (self.lastpatch). Return an info tuple for the patchset the patch
+        belongs to, if the supplied patch completes it (including single-patch
+        "patchsets"). Patchset identification is unreliable.
 
         Args:
-            patch   The patch object as returned by get_patch_by_id().
+            patch   An XML RPC patch object as returned by get_patch_by_id().
 
         Returns:
-            None, if patch should be skipped, or a patchset info tuple,
-            containing a list of URLs of patches comprising the patchset, and
-            a set of e-mail addresses involved with the patchset.
+            A patchset info tuple, or none, if patch is skipped or patchset is
+            not complete yet. The info tuple contains a list of URLs of
+            patches comprising the patchset, and a set of e-mail addresses
+            involved with the patchset.
         """
         pid = patch.get("id")
         pname = patch.get("name")
@@ -809,40 +819,70 @@ class skt_patchwork(object):
 
         emails = self.get_patch_emails(pid)
 
+        # Extract patch position in series and series length from patch name
         smatch = re.search(r"\[.*?(\d+)/(\d+).*?\]", pname)
+        # If the patch has series information in its name
         if smatch:
+            # Patch position in series
             cpatch = int(smatch.group(1))
+            # Number of patches in series
             mpatch = int(smatch.group(2))
 
+            # If patch position is out of range
             if cpatch < 1 or cpatch > mpatch:
                 logging.info("skipping patch %d: %s", pid, pname)
                 if pid > self.lastpatch:
                     self.lastpatch = pid
                 return result
 
+            #
+            # Generate series ID
+            #
+
+            # Get message ID of the patch e-mail
             mid = patch.get("msgid")
 
+            # Try to extract a part of message ID unique for a series, but
+            # common between series e-mails
             mmatch = re.match(r"\<(\d+\W\d+)\W\d+.*@", mid)
             seriesid = None
             if mmatch:
+                # Use it if found
                 seriesid = mmatch.group(1)
             else:
+                # Generate one from submitter ID and number of patches
+                # in series, otherwise, which is hardly unique
                 seriesid = "%s_%s" % (patch.get("submitter_id"), mpatch)
 
+            #
+            # Enter the patch into the series
+            #
+
+            # Create series dictionary, if doesn't exist
             if seriesid not in self.series:
                 self.series[seriesid] = dict()
 
+            # If the patch number was already seen in this series
             if cpatch in self.series[seriesid]:
+                # Skip it
                 return result
 
+            # Add it to the series
             self.series[seriesid][cpatch] = patch
 
+            #
+            # Output completed series
+            #
+
+            # If we already got all the patches in the series
             if len(self.series[seriesid].keys()) == mpatch:
+                # Create the patchset summary
                 logging.info("---")
                 logging.info("patchset: %s", seriesid)
 
                 eml = set()
                 patchset = list()
+                # For each patch position in series in order
                 for cpatch in sorted(self.series[seriesid].keys()):
                     patch = self.series[seriesid].get(cpatch)
                     self.log_patch(patch)
@@ -853,6 +893,7 @@ class skt_patchwork(object):
                 logging.info("emails: %s", eml)
                 logging.info("---")
                 result = (patchset, eml)
+        # Else, it's a single patch
         else:
             self.log_patch(patch)
             result = ([self.patchurl(patch)], emails)
@@ -864,8 +905,9 @@ class skt_patchwork(object):
 
     def get_new_patchsets(self):
         """
-        Retrieve a list of info tuples for applicable (non-skipped) patchsets
-        which haven't been processed yet.
+        Retrieve a list of info tuples for any completed patchsets comprised
+        of patches with ID greater than the maximum seen patch ID
+        (self.lastpatch). Update the maximum seen patch ID (self.lastpatch).
 
         Returns:
             A list of patchset info tuples, each containing a list of URLs of
@@ -885,8 +927,9 @@ class skt_patchwork(object):
     # TODO This shouldn't really skip patches to retrieve, should it?
     def get_patchsets(self, patchlist):
         """
-        Retrieve a list of info tuples of applicable (non-skipped) patchsets
-        for a list of specified patch IDs.
+        Retrieve a list of info tuples of any complete patchsets comprised by a
+        list of non-skipped patches with the specified IDs. Update the maximum
+        seen patch ID (self.lastpatch).
 
         Args:
             patchlist:  List of patch IDs to retrieve info tuples for,

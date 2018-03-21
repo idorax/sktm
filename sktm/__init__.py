@@ -162,20 +162,35 @@ class watcher(object):
                         None))
 
     def check_patchwork(self):
+        """
+        Submit and register Jenkins builds for patchsets which appeared in
+        Patchwork instances after their last processed patches, and for
+        patchsets which are comprised of patches added to the "pending" list
+        in the database, more than 12 hours ago.
+        """
         stablecommit = self.db.get_stable(self.baserepo)
         if stablecommit is None:
             raise Exception("No known stable baseline for repo %s" %
                             self.baserepo)
 
         logging.info("stable commit for %s is %s", self.baserepo, stablecommit)
+        # For every Patchwork interface
         for cpw in self.pw:
+            # Get patchset summaries for all patches the Patchwork interface
+            # hasn't seen yet
             patchsets = cpw.get_new_patchsets()
+            # Add patchset summaries for all patches staying pending for
+            # longer than 12 hours
             patchsets += cpw.get_patchsets(
                     self.db.get_expired_pending_patches(cpw.baseurl,
                                                         cpw.projectid, 43200))
+            # For each patchset summary
             for (patchset, emails) in patchsets:
+                # Create an empty list of patch ID and patch date tuples
                 pids = list()
+                # For each Patchwork patch URL in the patchset
                 for purl in patchset:
+                    # If patch ID can be extracted from the URL
                     match = re.match(r"(.*)/patch/(\d+)$", purl)
                     if match:
                         # TODO Shouldn't we be getting this from Patchwork in
@@ -184,8 +199,10 @@ class watcher(object):
                         patch = cpw.get_patch_by_id(pid)
                         pids.append((pid, patch.get("date").replace(" ", "T")))
 
+                # (Re-)add the patchset's patches to the "pending" list
                 self.db.set_patchset_pending(cpw.baseurl, cpw.projectid,
                                              pids)
+                # Submit and remember a Jenkins build for the patchset
                 self.pj.append((sktm.jtype.PATCHWORK,
                                 self.jk.build(self.jobname,
                                               baserepo=self.baserepo,

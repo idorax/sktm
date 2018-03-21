@@ -206,14 +206,17 @@ class skt_db(object):
 
     def get_expired_pending_patches(self, baseurl, projid, exptime=86400):
         """
-        Get a list of IDs of pending patches older than specified time, for a
-        combination of a Patchwork base URL and Patchwork project ID.
+        Get a list of IDs of patches set as pending for longer than the
+        specified time, for a combination of a Patchwork base URL and
+        Patchwork project ID.
 
         Args:
-            baseurl:    Patchwork base URL.
-            projid:     Patchwork project ID.
-            exptime:    Minimum age of patches to return, seconds.
-                        Default is 24 hours.
+            baseurl:    Base URL of Patchwork instance the project and patches
+                        belong to.
+            projid:     ID of the Patchwork project the patches belong to.
+            exptime:    The longer-than time the returned patches should have
+                        been staying in the "pending" list.
+                        Default is anything longer than 24 hours.
 
         Returns:
             List of patch IDs.
@@ -298,6 +301,21 @@ class skt_db(object):
         return None if res is None else res[0]
 
     def set_patchset_pending(self, baseurl, projid, patchset):
+        """
+        Add each specified patch to the list of "pending" patches, with
+        specifed patch date, for specified Patchwork base URL and project ID,
+        and marked with current timestamp. Replace any previously added
+        patches with the same ID (bug: should be "same ID, project ID and
+        base URL").
+
+        Args:
+            baseurl:    Base URL of the Patchwork instance the project ID and
+                        patch IDs belong to.
+            projid:     ID of the Patchwork project the patch IDs belong to.
+            patchset:   List of info tuples for patches to add to the list,
+                        where each tuple contains the patch ID and a free-form
+                        patch date string.
+        """
         psid = self.get_sourceid(baseurl, projid)
         tstamp = int(time.time())
 
@@ -312,6 +330,16 @@ class skt_db(object):
         self.conn.commit()
 
     def unset_patchset_pending(self, baseurl, projid, patchset):
+        """
+        Remove each specified patch from the list of "pending" patches, for
+        the specified Patchwork base URL and project ID.
+
+        Args:
+            baseurl:    Base URL of the Patchwork instance the project ID and
+                        patch IDs belong to.
+            projid:     ID of the Patchwork project the patch IDs belong to.
+            patchset:   List of IDs of patches to be removed from the list.
+        """
         psid = self.get_sourceid(baseurl, projid)
 
         logging.debug("removing patches from pending list: %s", patchset)
