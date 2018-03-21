@@ -124,6 +124,7 @@ class watcher(object):
         if self.restapi:
             pw = sktm.patchwork.skt_patchwork2(baseurl, pname, lpatch, apikey)
 
+            # FIXME Figure out the last patch first, then create the interface
             if lpatch is None:
                 lcdate = self.db.get_last_checked_patch_date(baseurl,
                                                              pw.projectid)
@@ -139,6 +140,7 @@ class watcher(object):
             pw = sktm.patchwork.skt_patchwork(baseurl, pname,
                                               int(lpatch) if lpatch else None)
 
+            # FIXME Figure out the last patch first, then create the interface
             if lpatch is None:
                 lcpatch = self.db.get_last_checked_patch(baseurl, pw.projectid)
                 lppatch = self.db.get_last_pending_patch(baseurl, pw.projectid)

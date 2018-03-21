@@ -27,6 +27,7 @@ import sktm
 
 # TODO Move common code to a common parent class
 
+# TODO Supply this on Patchwork instance creation instead
 SKIP_PATTERNS = [
     r"\[[^\]]*iproute.*?\]",
     r"\[[^\]]*pktgen.*?\]",
@@ -838,6 +839,9 @@ class skt_patchwork(object):
             #
             # Generate series ID
             #
+            # FIXME Employ a more reliable algorithm to get project-unique
+            #       series IDs. Perhaps identify by submitter ID, and
+            #       timestamp clump.
 
             # Get message ID of the patch e-mail
             mid = patch.get("msgid")

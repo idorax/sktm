@@ -34,6 +34,8 @@ class skt_db(object):
         tc = sqlite3.connect(db)
         c = tc.cursor()
 
+        # FIXME The "patchsource_id" field should be a part of the primary key
+        #       for "pendingpatches" and "patch" tables.
         c.executescript("""
                 PRAGMA foreign_keys = on;
 
