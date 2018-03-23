@@ -29,17 +29,21 @@ import sktm
 class PatchsetSummary(object):
     """A patchset summary"""
 
-    def __init__(self, email_addr_set, patch_url_list):
+    def __init__(self, message_id, email_addr_set, patch_url_list):
         """
         Initialize a patchset summary.
 
         Args:
+            message_id:     Value of the "Message-Id" header of the e-mail
+                            message representing the patchset.
             email_addr_set: A set of e-mail addresses involved with the
                             patchset.
             patch_url_list: A list of URLs pointing to Patchwork patch
                             objects comprising the patchset, in order they
                             should be applied in.
         """
+        # Message-Id of the message representing the patchset
+        self.message_id = message_id
         # A set of e-mail addresses involved with the patchset
         self.email_addr_set = email_addr_set
         # A list of URLs pointing to Patchwork patch objects comprising
@@ -204,17 +208,19 @@ class skt_patchwork2(object):
 
         return r.json()
 
-    def get_patch_emails(self, pid):
+    def get_message_id_and_emails(self, pid):
         """
-        Get a set of e-mail addresses involved with the patch with specified
-        ID.
+        Get Message-ID and all involved e-mail addresses from patch message
+        headers.
 
         Args:
-            pid:    ID of the patch to get e-mails for.
+            pid:    ID of the patch to get header values for.
 
         Returns:
-            A set of e-mail addresses.
+            The Message-Id header value and a set of e-mail addresses
+            involved with the patch.
         """
+        message_id = None
         emails = set()
 
         r = requests.get("%s/%s" % (self.apiurls.get("patches"), pid))
@@ -226,18 +232,20 @@ class skt_patchwork2(object):
         pdata = r.json()
         headers = pdata.get("headers")
 
-        for header in ["From", "To", "Cc"]:
-            if header in headers:
-                for faddr in [x.strip() for x in headers[header].split(",")]:
-                    logging.debug("patch=%d; header=%s; email=%s", pid, header,
-                                  faddr)
+        for header_name, header_value in headers.iteritems():
+            if header_name.lower() in ["from", "to", "cc"]:
+                for faddr in [x.strip() for x in header_value.split(",")]:
+                    logging.debug("patch=%d; header=%s; email=%s",
+                                  pid, header_name, faddr)
                     maddr = re.search(r"\<([^\>]+)\>", faddr)
                     if maddr:
                         emails.add(maddr.group(1))
                     else:
                         emails.add(faddr)
+            elif header_name.lower() == "message-id":
+                message_id = header_value
 
-        return emails
+        return message_id, emails
 
     def get_series_from_url(self, url):
         """
@@ -268,8 +276,9 @@ class skt_patchwork2(object):
             sdata = [sdata]
 
         for series in sdata:
+            message_id = None
+            all_emails = set()
             plist = list()
-            emails = set()
 
             if not series.get("received_all"):
                 logging.info("skipping incomplete series: [%d] %s",
@@ -288,11 +297,14 @@ class skt_patchwork2(object):
                 logging.info("patch: [%d] %s", patch.get("id"),
                              patch.get("name"))
                 plist.append(self.patchurl(patch))
-                emails = emails.union(self.get_patch_emails(patch.get("id")))
+                message_id, emails = self.get_message_id_and_emails(
+                                                            patch.get("id"))
+                all_emails = all_emails.union(emails)
             logging.info("---")
 
             if plist:
-                patchsets.append(PatchsetSummary(emails, plist))
+                patchsets.append(
+                            PatchsetSummary(message_id, all_emails, plist))
 
         link = r.headers.get("Link")
         if link is not None:
@@ -722,16 +734,17 @@ class skt_patchwork(object):
 
         return patches
 
-    def get_patch_emails(self, pid):
+    def get_message_id_and_emails(self, pid):
         """
-        Get a set of e-mail addresses involved with the patch with specified
-        ID.
+        Get Message-ID and all involved e-mail addresses from patch message
+        headers.
 
         Args:
-            pid:    ID of the patch to get e-mails for.
+            pid:    ID of the patch to get header values for.
 
         Returns:
-            A set of e-mail addresses.
+            The Message-Id header value and a set of e-mail addresses
+            involved with the patch.
         """
         emails = set()
 
@@ -749,7 +762,7 @@ class skt_patchwork(object):
                     else:
                         emails.add(faddr)
 
-        return emails
+        return mbox["Message-ID"], emails
 
     def set_patch_check(self, pid, jurl, result):
         """
@@ -774,7 +787,8 @@ class skt_patchwork(object):
         """
         patch = self.get_patch_by_id(pid)
         print "pinfo=%s\n" % patch
-        print "emails=%s\n" % self.get_patch_emails(pid)
+        print "message_id=%s\nemails=%s\n" % \
+            self.get_message_id_and_emails(pid)
 
     # TODO Move this to __init__ or make it a class method
     def get_projectid(self, projectname):
@@ -826,8 +840,6 @@ class skt_patchwork(object):
             if pid > self.lastpatch:
                 self.lastpatch = pid
             return result
-
-        emails = self.get_patch_emails(pid)
 
         # Extract patch position in series and series length from patch name
         smatch = re.search(r"\[.*?(\d+)/(\d+).*?\]", pname)
@@ -893,23 +905,28 @@ class skt_patchwork(object):
                 logging.info("---")
                 logging.info("patchset: %s", seriesid)
 
-                eml = set()
+                message_id = None
+                all_emails = set()
                 patchset = list()
                 # For each patch position in series in order
                 for cpatch in sorted(self.series[seriesid].keys()):
                     patch = self.series[seriesid].get(cpatch)
                     self.log_patch(patch)
                     pid = patch.get("id")
-                    eml = eml.union(self.get_patch_emails(pid))
+                    message_id, emails = self.get_message_id_and_emails(pid)
+                    all_emails = all_emails.union(emails)
                     patchset.append(self.patchurl(patch))
 
-                logging.info("emails: %s", eml)
+                logging.info("message_id: %s", message_id)
+                logging.info("emails: %s", all_emails)
                 logging.info("---")
-                result = PatchsetSummary(eml, patchset)
+                result = PatchsetSummary(message_id, all_emails, patchset)
         # Else, it's a single patch
         else:
             self.log_patch(patch)
-            result = PatchsetSummary(emails, [self.patchurl(patch)])
+            message_id, emails = self.get_message_id_and_emails(pid)
+            result = PatchsetSummary(message_id, emails,
+                                     [self.patchurl(patch)])
 
         if pid > self.lastpatch:
             self.lastpatch = pid
