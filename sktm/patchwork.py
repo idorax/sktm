@@ -44,12 +44,10 @@ def stringify(v):
     is returned a str, sometimes as unicode. We need to
     handle both cases properly.
     """
-    if type(v) is str:
-        return v
-    elif type(v) is unicode:
+    if isinstance(v, unicode):
         return v.encode('utf-8')
-    else:
-        return str(v)
+
+    return str(v)
 
 
 # Internal RH PatchWork adds a magic API version with each call
@@ -195,7 +193,6 @@ class skt_patchwork2(object):
             A set of e-mail addresses.
         """
         emails = set()
-        used_addr = list()
 
         r = requests.get("%s/%s" % (self.apiurls.get("patches"), pid))
 
@@ -207,19 +204,15 @@ class skt_patchwork2(object):
         headers = pdata.get("headers")
 
         for header in ["From", "To", "Cc"]:
-            if headers.get(header) is None:
-                continue
-            for faddr in [x.strip() for x in headers.get(header).split(",")]:
-                logging.debug("patch=%d; header=%s; email=%s", pid, header,
-                              faddr)
-                maddr = re.search("\<([^\>]+)\>", faddr)
-                if maddr:
-                    addr = maddr.group(1)
-                    if addr not in used_addr:
+            if header in headers:
+                for faddr in [x.strip() for x in headers[header].split(",")]:
+                    logging.debug("patch=%d; header=%s; email=%s", pid, header,
+                                  faddr)
+                    maddr = re.search("\<([^\>]+)\>", faddr)
+                    if maddr:
+                        emails.add(maddr.group(1))
+                    else:
                         emails.add(faddr)
-                        used_addr.append(addr)
-                else:
-                    emails.add(faddr)
 
         return emails
 
@@ -246,8 +239,9 @@ class skt_patchwork2(object):
                             r.status_code))
 
         sdata = r.json()
-        # TODO Why is this necessary?
-        if type(sdata) is not list:
+        # If there is a single series returned we get a dict, not a list with
+        # a single element. Fix this inconsistency for easier processing.
+        if not isinstance(sdata, list):
             sdata = [sdata]
 
         for series in sdata:
@@ -266,7 +260,7 @@ class skt_patchwork2(object):
 
             logging.info("series: [%d] %s", series.get("id"),
                          series.get("name"))
-            # For each patch in series
+
             for patch in series.get("patches"):
                 logging.info("patch: [%d] %s", patch.get("id"),
                              patch.get("name"))
@@ -274,7 +268,7 @@ class skt_patchwork2(object):
                 emails = emails.union(self.get_patch_emails(patch.get("id")))
             logging.info("---")
 
-            if len(plist) > 0:
+            if plist:
                 patchsets.append((plist, emails))
 
         link = r.headers.get("Link")
@@ -310,9 +304,10 @@ class skt_patchwork2(object):
                             r.status_code))
 
         edata = r.json()
-        # TODO Why is this necessary?
-        if type(edata) is not list:
-            sdata = [edata]
+        # If there is a single event returned we get a dict, not a list with
+        # a single element. Fix this inconsistency for easier processing.
+        if not isinstance(edata, list):
+            edata = [edata]
 
         # For each event
         for event in edata:
@@ -435,19 +430,18 @@ class skt_patchwork2(object):
                             r.status_code))
 
         pdata = r.json()
-        # TODO Why is this necessary?
+        # If there is a single patch returned we get a dict, not a list with
+        # a single element. Fix this inconsistency for easier processing.
         if type(pdata) is not list:
             pdata = [pdata]
 
-        # For each patch
         for patch in pdata:
             # For each patch series the patch belongs to
             for series in patch.get("series"):
                 sid = series.get("id")
                 if (sid in seen):
                     continue
-                elif (db is not None and
-                      db.get_series_result(sid) is not None):
+                elif db and db.get_series_result(sid):
                     logging.info("skipping already tested series: [%d] %s",
                                  sid, series.get("name"))
                     continue
@@ -459,7 +453,7 @@ class skt_patchwork2(object):
                     seen.add(sid)
 
         link = r.headers.get("Link")
-        if link is not None:
+        if not link:
             m = re.match("<(.*)>; rel=\"next\"", link)
             if m:
                 nurl = m.group(1)
@@ -468,8 +462,7 @@ class skt_patchwork2(object):
 
         return patchsets
 
-    # FIXME The "db" argument is unused
-    def get_new_patchsets(self, db=None):
+    def get_new_patchsets(self):
         """
         Retrieve a list of info tuples for applicable (non-skipped) patchsets
         which haven't been processed yet.
@@ -523,18 +516,16 @@ class skt_patchwork2(object):
         # For each patch ID
         for pid in patchlist:
             patch = self.get_patch_by_id(pid)
-            if patch is None:
-                continue
-
-            # For each series the patch belongs to
-            for series in patch.get("series"):
-                sid = series.get("id")
-                if sid not in seen:
-                    patchsets += self.get_series_from_url("%s/%d" % (
-                        self.apiurls.get("series"),
-                        sid
-                    ))
-                    seen.add(sid)
+            if patch:
+                # For each series the patch belongs to
+                for series in patch.get("series"):
+                    sid = series.get("id")
+                    if sid not in seen:
+                        patchsets += self.get_series_from_url("%s/%d" % (
+                            self.apiurls.get("series"),
+                            sid
+                        ))
+                        seen.add(sid)
 
         return patchsets
 
@@ -725,25 +716,20 @@ class skt_patchwork(object):
             A set of e-mail addresses.
         """
         emails = set()
-        used_addr = list()
 
         mboxdata = stringify(self.rpc.patch_get_mbox(pid))
         mbox = email.message_from_string(mboxdata)
 
         for header in ["From", "To", "Cc"]:
-            if mbox[header] is None:
-                continue
-            for faddr in [x.strip() for x in mbox[header].split(",")]:
-                logging.debug("patch=%d; header=%s; email=%s", pid, header,
-                              faddr)
-                maddr = re.search("\<([^\>]+)\>", faddr)
-                if maddr:
-                    addr = maddr.group(1)
-                    if addr not in used_addr:
+            if header in mbox:
+                for faddr in [x.strip() for x in mbox[header].split(",")]:
+                    logging.debug("patch=%d; header=%s; email=%s", pid, header,
+                                  faddr)
+                    maddr = re.search("\<([^\>]+)\>", faddr)
+                    if maddr:
+                        emails.add(maddr.group(1))
+                    else:
                         emails.add(faddr)
-                        used_addr.append(addr)
-                else:
-                    emails.add(faddr)
 
         return emails
 
@@ -892,7 +878,7 @@ class skt_patchwork(object):
         for patch in self.get_patch_list({'project_id': self.projectid,
                                           'id__gt': self.lastpatch}):
             pset = self.parse_patch(patch)
-            if pset is not None:
+            if pset:
                 patchsets.append(pset)
         return patchsets
 
@@ -916,10 +902,8 @@ class skt_patchwork(object):
         logging.debug("get_patchsets: %s", patchlist)
         for pid in patchlist:
             patch = self.get_patch_by_id(pid)
-            if patch is None:
-                continue
-
-            pset = self.parse_patch(patch)
-            if pset is not None:
-                patchsets.append(pset)
+            if patch:
+                pset = self.parse_patch(patch)
+                if pset:
+                    patchsets.append(pset)
         return patchsets
