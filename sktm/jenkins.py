@@ -221,33 +221,27 @@ class skt_jenkins(object):
         return not build.is_running()
 
     def _params_eq(self, build, params):
-        result = True
-        if build is None or build.get_actions() is None or \
-                build.get_actions().get("parameters") is None:
+        try:
+            build_params = build.get_actions()["parameters"]
+        except AttributeError, KeyError:
             return False
 
-        for param in build.get_actions().get("parameters"):
-            if param.get("name") in params:
-                if param.get("value") != params.get(param.get("name")):
-                    result = False
-                    break
+        for build_param in build_params:
+            if (build_param["name"] in params
+                    and build_param["value"] != params[build_param["name"]]):
+                    return False
 
-        return result
+        return True
 
     def find_build(self, jobname, params, eid=None):
         job = self.server.get_job(jobname)
+        lbuild = None
 
-        try:
-            lbuild = job.get_last_build()
-        except jenkinsapi.custom_exceptions.NoBuildData:
-            lbuild = None
-
-        while lbuild is None:
-            time.sleep(1)
+        while not lbuild:
             try:
                 lbuild = job.get_last_build()
             except jenkinsapi.custom_exceptions.NoBuildData:
-                lbuild = None
+                time.sleep(1)
 
         if eid is not None:
             while lbuild.get_number() < eid:
