@@ -1,0 +1,134 @@
+- job:
+    name: sktm
+    project-type: pipeline
+    concurrent: false
+    auth-token: AUTH-TOKEN
+    dsl: |
+        properties([
+            parameters([
+                string(name: 'baserepo',
+                       defaultValue: 'git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git'),
+                string(name: 'ref',
+                       defaultValue: 'v4.15'),
+                string(name: 'baseconfig',
+                       defaultValue: 'https://src.fedoraproject.org/rpms/kernel/raw/master/f/kernel-x86_64.config'),
+                string(name: 'patchwork',
+                       defaultValue: ''),
+                string(name: 'makeopts',
+                       defaultValue: ''),
+                string(name: 'emails',
+                       defaultValue: '')
+            ])
+        ])
+        def result_from = "Jenkins <jenkins@localhost.localdomain>"
+        def result_to = "Root <root@localhost.localdomain>"
+        def kernel_config_file = "kernel.config"
+        def tests_url = "https://github.com/RH-FMK/tests-beaker/archive/master.zip"
+        def beakerjob_file = "beakerjob.xml"
+        def beakerjob_text = """\
+            <job>
+              <whiteboard>skt ##KVER## ##UID## ##HOSTNAME##[noavc] [noselinux]</whiteboard>
+              <recipeSet>
+                <recipe ks_meta="harness='restraint-rhts beakerlib-redhat'"
+                        kernel_options="selinux=0"
+                        whiteboard="##KVER##">
+                  <distroRequires>
+                    <and>
+                      <distro_family op="=" value="Fedora26"/>
+                      <distro_tag op="=" value="RELEASED"/>
+                      <distro_variant op="=" value="Server"/>
+                      <distro_arch op="=" value="x86_64"/>
+                    </and>
+                  </distroRequires>
+                  <hostRequires>
+                    <and>
+                      <arch op="=" value="x86_64"/>
+                      ##HOSTNAMETAG##
+                    </and>
+                  </hostRequires>
+                  <task name="/distribution/install" role="STANDALONE"/>
+                  <task name="/distribution/command" role="None">
+                    <params>
+                      <param name="CMDS_TO_RUN"
+                             value="rm /usr/share/restraint/plugins/report_result.d/10_avc_check"/>
+                    </params>
+                  </task>
+                    <task name="/test/misc/machineinfo">
+                    <fetch url="${tests_url}#test/misc/machineinfo"/>
+                  </task>
+                  <task name="/distribution/kpkginstall" role="STANDALONE">
+                    <fetch url="${tests_url}#distribution/kpkginstall"/>
+                    <params>
+                      <param name="KPKG_URL" value="##KPKG_URL##"/>
+                      <param name="KVER" value="##KVER##"/>
+                    </params>
+                  </task>
+                </recipe>
+              </recipeSet>
+            </job>
+        """.stripIndent()
+        def sktrc_file = "skt-rc"
+        def sktrc_text = """
+        [config]
+        workdir = skt-workdir
+        [runner]
+        type = beaker
+        jobtemplate = ${beakerjob_file}
+        """
+        def patchwork_opts = "${params.patchwork}" ? "--pw ${params.patchwork}" : ""
+        def make_opts = "${params.makeopts}" ? "--makeopts ${params.makeopts}" : ""
+        def reporter_opts = """--reporter mail \
+                               \"{'mailfrom': '${result_from}', \
+                                  'mailto': '${result_to}'}\""""
+        node {
+            def virtualenv_dir = "${pwd(tmp:true)}/virtualenv"
+            def virtualenv = "set +x; source '${virtualenv_dir}/bin/activate'; set -x"
+            def skt = "${virtualenv}; skt -vv --state --rc ${sktrc_file} --junit junit"
+            stage('Setup') {
+                sh "rm -rf junit result ${virtualenv_dir}"
+                sh "virtualenv --system-site-packages ${virtualenv_dir}"
+                sh "mkdir junit result"
+                sh "${virtualenv}; pip install git+https://github.com/RH-FMK/skt.git@master"
+                writeFile file: "${beakerjob_file}", text: "${beakerjob_text}"
+                writeFile file: "${sktrc_file}", text: "${sktrc_text}"
+                sh "curl -o ${kernel_config_file} ${params.baseconfig}"
+                /* Make sure HTTP server is started */
+                sh """\
+                    python -m SimpleHTTPServer 4040 &
+                    jobs -p > httpd.pid
+                    # Let the server initialize
+                    sleep 1
+                    kill -s CONT `< httpd.pid`
+                """.stripIndent()
+            }
+            try {
+                stage('Merge') {
+                    sh "${skt} merge ${patchwork_opts} --baserepo ${params.baserepo} --ref ${params.ref}"
+                }
+                stage('Build') {
+                    sh "${skt} build ${make_opts} -c ${kernel_config_file}"
+                }
+                stage('Publish') {
+                    sh "${skt} publish -p cp result http://`hostname -f`:4040/result"
+                }
+                stage('Test') {
+                    sh "${skt} run --wait"
+                }
+            }
+            finally {
+                try {
+                    stage('Report') {
+                        sh "${skt} report ${reporter_opts}"
+                    }
+                    stage('Cleanup') {
+                        sh "${skt} cleanup"
+                    }
+                }
+                finally
+                {
+                    /* Stop HTTP server */
+                    sh "kill `< httpd.pid` || true"
+                    junit keepLongStdio: true, testResults: "junit/*.xml"
+                }
+            }
+        }
