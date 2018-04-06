@@ -211,10 +211,12 @@ class watcher(object):
                                     baserepo=self.baserepo,
                                     ref=stablecommit,
                                     baseconfig=self.cfgurl,
+                                    message_id=patchset.message_id,
                                     emails=patchset.email_addr_set,
                                     patchwork=patchset.patch_url_list,
                                     makeopts=self.makeopts),
                                 cpw))
+                logging.info("submitted message ID: %s", patchset.message_id)
                 logging.info("submitted emails: %s", patchset.email_addr_set)
                 logging.info("submitted patchset: %s", patchset.patch_url_list)
 
