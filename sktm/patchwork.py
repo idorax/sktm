@@ -175,7 +175,7 @@ class skt_patchwork2(object):
         Returns:
             The JSON representation of the API URLs.
         """
-        r = requests.get("%s/api/1.0" % self.baseurl)
+        r = requests.get("%s/api" % self.baseurl)
         if r.status_code != 200:
             raise Exception("Can't get apiurls: %d" % r.status_code)
 
