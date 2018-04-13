@@ -453,7 +453,7 @@ class skt_patchwork2(object):
                     seen.add(sid)
 
         link = r.headers.get("Link")
-        if not link:
+        if link:
             m = re.match("<(.*)>; rel=\"next\"", link)
             if m:
                 nurl = m.group(1)
