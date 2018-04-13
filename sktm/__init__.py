@@ -176,7 +176,7 @@ class watcher(object):
             for (patchset, emails) in patchsets:
                 pids = list()
                 for purl in patchset:
-                    match = re.match("(.*)/patch/(\d+)$", purl)
+                    match = re.match(r"(.*)/patch/(\d+)$", purl)
                     if match:
                         # TODO Shouldn't we be getting this from Patchwork in
                         # the first place, when calling get_patchsets()?
@@ -232,7 +232,7 @@ class watcher(object):
 
                     patchset = self.jk.get_patchwork(self.jobname, bid)
                     for purl in patchset:
-                        match = re.match("(.*)/patch/(\d+)$", purl)
+                        match = re.match(r"(.*)/patch/(\d+)$", purl)
                         if match:
                             baseurl = match.group(1)
                             pid = int(match.group(2))

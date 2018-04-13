@@ -28,12 +28,12 @@ import sktm
 # TODO Move common code to a common parent class
 
 SKIP_PATTERNS = [
-        "\[[^\]]*iproute.*?\]",
-        "\[[^\]]*pktgen.*?\]",
-        "\[[^\]]*ethtool.*?\]",
-        "\[[^\]]*git.*?\]",
-        "\[[^\]]*pull.*?\]",
-        "pull.?request"
+    r"\[[^\]]*iproute.*?\]",
+    r"\[[^\]]*pktgen.*?\]",
+    r"\[[^\]]*ethtool.*?\]",
+    r"\[[^\]]*git.*?\]",
+    r"\[[^\]]*pull.*?\]",
+    r"pull.?request"
 ]
 
 
@@ -208,7 +208,7 @@ class skt_patchwork2(object):
                 for faddr in [x.strip() for x in headers[header].split(",")]:
                     logging.debug("patch=%d; header=%s; email=%s", pid, header,
                                   faddr)
-                    maddr = re.search("\<([^\>]+)\>", faddr)
+                    maddr = re.search(r"\<([^\>]+)\>", faddr)
                     if maddr:
                         emails.add(maddr.group(1))
                     else:
@@ -725,7 +725,7 @@ class skt_patchwork(object):
                 for faddr in [x.strip() for x in mbox[header].split(",")]:
                     logging.debug("patch=%d; header=%s; email=%s", pid, header,
                                   faddr)
-                    maddr = re.search("\<([^\>]+)\>", faddr)
+                    maddr = re.search(r"\<([^\>]+)\>", faddr)
                     if maddr:
                         emails.add(maddr.group(1))
                     else:
@@ -809,7 +809,7 @@ class skt_patchwork(object):
 
         emails = self.get_patch_emails(pid)
 
-        smatch = re.search("\[.*?(\d+)/(\d+).*?\]", pname)
+        smatch = re.search(r"\[.*?(\d+)/(\d+).*?\]", pname)
         if smatch:
             cpatch = int(smatch.group(1))
             mpatch = int(smatch.group(2))
@@ -822,7 +822,7 @@ class skt_patchwork(object):
 
             mid = patch.get("msgid")
 
-            mmatch = re.match("\<(\d+\W\d+)\W\d+.*@", mid)
+            mmatch = re.match(r"\<(\d+\W\d+)\W\d+.*@", mid)
             seriesid = None
             if mmatch:
                 seriesid = mmatch.group(1)
