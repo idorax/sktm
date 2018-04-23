@@ -290,19 +290,27 @@ class skt_patchwork2(object):
                              series.get("name"))
                 continue
 
-            logging.info("series: [%d] %s", series.get("id"),
+            logging.info("series [%d] %s", series.get("id"),
                          series.get("name"))
 
             for patch in series.get("patches"):
-                logging.info("patch: [%d] %s", patch.get("id"),
+                logging.info("patch [%d] %s", patch.get("id"),
                              patch.get("name"))
                 plist.append(self.patchurl(patch))
                 message_id, emails = self.get_message_id_and_emails(
                                                             patch.get("id"))
+                logging.debug("patch [%d] message_id: %s", patch.get("id"),
+                              message_id)
+                logging.debug("patch [%d] emails: %s", patch.get("id"),
+                              emails)
                 all_emails = all_emails.union(emails)
             logging.info("---")
 
             if plist:
+                logging.debug("series [%d] message_id: %s", series.get("id"),
+                              message_id)
+                logging.debug("series [%d] emails: %s", series.get("id"),
+                              all_emails)
                 patchsets.append(
                             PatchsetSummary(message_id, all_emails, plist))
 
@@ -645,18 +653,19 @@ class skt_patchwork(object):
         """
         return "%s/patch/%d" % (self.baseurl, patch.get("id"))
 
-    def log_patch(self, patch):
+    def log_patch(self, id, name, message_id, emails):
         """
-        Log patch ID and name.
+        Log patch ID, name, Message-ID, and e-mails.
 
         Args:
-            patch:  The patch object, as returned by XML RPC, to log ID and
-                    name of.
+            id:         The patch ID to log.
+            name:       The patch name to log.
+            message_id: The Message-ID header from the patch e-mail.
+            emails:     E-mail addresses involved with the patch.
         """
-        pid = patch.get("id")
-        pname = patch.get("name")
-
-        logging.info("%d: %s", pid, pname)
+        logging.info("patch %d %s", id, name)
+        logging.info("patch %d message_id: %s", id, message_id)
+        logging.info("patch %d emails: %s", id, emails)
 
     def update_patch_name(self, patch):
         """
@@ -911,9 +920,9 @@ class skt_patchwork(object):
                 # For each patch position in series in order
                 for cpatch in sorted(self.series[seriesid].keys()):
                     patch = self.series[seriesid].get(cpatch)
-                    self.log_patch(patch)
                     pid = patch.get("id")
                     message_id, emails = self.get_message_id_and_emails(pid)
+                    self.log_patch(pid, patch.get("name"), message_id, emails)
                     all_emails = all_emails.union(emails)
                     patchset.append(self.patchurl(patch))
 
@@ -923,8 +932,8 @@ class skt_patchwork(object):
                 result = PatchsetSummary(message_id, all_emails, patchset)
         # Else, it's a single patch
         else:
-            self.log_patch(patch)
             message_id, emails = self.get_message_id_and_emails(pid)
+            self.log_patch(pid, pname, message_id, emails)
             result = PatchsetSummary(message_id, emails,
                                      [self.patchurl(patch)])
 
