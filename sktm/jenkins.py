@@ -12,10 +12,12 @@
 # along with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
-import jenkinsapi
 import json
 import logging
 import time
+
+import jenkinsapi
+
 import sktm
 
 
@@ -64,8 +66,8 @@ class skt_jenkins(object):
         build = self._wait_and_get_build(jobname, buildid)
 
         if not build.has_resultset():
-            raise Exception("No results for build %d (%s)" % (buildid,
-                            build.get_status()))
+            raise Exception("No results for build %d (%s)" %
+                            (buildid, build.get_status()))
 
         for (key, val) in build.get_resultset().iteritems():
             if key == stepname:
@@ -139,8 +141,8 @@ class skt_jenkins(object):
             return sktm.tresult.SUCCESS
 
         if not build.has_resultset():
-            raise Exception("No results for build %d (%s)" % (buildid,
-                            build.get_status()))
+            raise Exception("No results for build %d (%s)" %
+                            (buildid, build.get_status()))
 
         if bstatus == "UNSTABLE" and \
                 (build.get_resultset()["skt.cmd_run"].status in
@@ -148,8 +150,8 @@ class skt_jenkins(object):
             if self.get_baseretcode(jobname, buildid) != 0:
                 logging.warning("baseline failure found during patch testing")
                 return sktm.tresult.BASELINE_FAILURE
-            else:
-                return sktm.tresult.SUCCESS
+
+            return sktm.tresult.SUCCESS
 
         for (key, val) in build.get_resultset().iteritems():
             if not key.startswith("skt."):
@@ -200,10 +202,10 @@ class skt_jenkins(object):
         if makeopts is not None:
             params["makeopts"] = makeopts
 
-        if len(patchwork) > 0:
+        if patchwork:
             params["patchwork"] = " ".join(patchwork)
 
-        if len(emails) > 0:
+        if emails:
             params["emails"] = ",".join(emails)
 
         logging.debug(params)
@@ -223,13 +225,13 @@ class skt_jenkins(object):
     def _params_eq(self, build, params):
         try:
             build_params = build.get_actions()["parameters"]
-        except AttributeError, KeyError:
+        except (AttributeError, KeyError):
             return False
 
         for build_param in build_params:
             if (build_param["name"] in params
                     and build_param["value"] != params[build_param["name"]]):
-                    return False
+                return False
 
         return True
 
