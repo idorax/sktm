@@ -199,14 +199,14 @@ class skt_jenkins(object):
         if baseconfig is not None:
             params["baseconfig"] = baseconfig
 
-        if makeopts is not None:
-            params["makeopts"] = makeopts
-
         if patchwork:
             params["patchwork"] = " ".join(patchwork)
 
         if emails:
             params["emails"] = ",".join(emails)
+
+        if makeopts is not None:
+            params["makeopts"] = makeopts
 
         logging.debug(params)
         job = self.server.get_job(jobname)
