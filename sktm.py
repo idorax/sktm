@@ -86,7 +86,7 @@ def cmd_baseline(sw, cfg):
 
 
 def cmd_patchwork(sw, cfg):
-    logging.info("checking patchwork: %s [%s]", cfg.get("repo"),
+    logging.info("checking patchwork: %s [%s]", cfg.get("baseurl"),
                  cfg.get("project"))
     sw.set_baseline(cfg.get("repo"), cfgurl=cfg.get("cfgurl"))
     sw.set_restapi(cfg.get("restapi"))
