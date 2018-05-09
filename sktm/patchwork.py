@@ -208,44 +208,73 @@ class skt_patchwork2(object):
 
         return r.json()
 
-    def get_message_id_and_emails(self, pid):
+    def get_header_value(self, patch_id, *keys):
         """
-        Get Message-ID and all involved e-mail addresses from patch message
-        headers.
+        Get the value(s) of requested message headers.
+
+        Since Patchwork 2.1, all the headers with same key are returned in the
+        API as a list (this is relevant for eg. 'Received' header which can be
+        present multiple times; before, only one of them was present). Work
+        around this difference by concatenating the values with double newlines
+        as a divider (we shouldn't need headers which can be present multiple
+        times anyways).
 
         Args:
-            pid:    ID of the patch to get header values for.
+            patch_id: ID of the patch to retrieve header value for.
+            keys:     Keys of the headers which values should be retrieved.
 
         Returns:
-            The Message-Id header value and a set of e-mail addresses
-            involved with the patch.
+            A tuple of strings representing the values of requested headers
+            from patch.
         """
-        message_id = None
+        req = requests.get('%s/%s' % (self.apiurls.get('patches'), patch_id))
+
+        if req.status_code != 200:
+            raise Exception('Failed to get data for patch %d (%d)' %
+                            (patch_id, req.status_code))
+
+        res = ()
+        headers = {}
+        # Make sure we handle case difference until we switch to mbox parsing
+        for key, value in req.json().get('headers', {}).items():
+            headers[key.lower()] = value
+
+        for key in keys:
+            value = headers.get(key.lower(), '')
+            # We need to handle strings and unicode.
+            # NOTE: basestring doesn't exist in PY3 but since the retrieval
+            # will be reworked before we get compatible it shouldn't matter
+            if isinstance(value, basestring):
+                res += (value,)
+            else:
+                res += ('\n\n'.join([val for val in value]),)
+
+        return res
+
+    def get_emails(self, pid):
+        """
+        Get all involved e-mail addresses from patch message headers.
+
+        Args:
+            pid:    ID of the patch to get emails for.
+
+        Returns:
+            A set of e-mail addresses involved with the patch.
+        """
         emails = set()
 
-        r = requests.get("%s/%s" % (self.apiurls.get("patches"), pid))
+        logging.debug("getting emails for patch %d from 'from', 'to', 'cc'")
+        header_values = self.get_header_value(pid, "from", "to", "cc")
+        for header_value in header_values:
+            for faddr in [x.strip() for x in header_value.split(",") if x]:
+                logging.debug("patch=%d; email=%s", pid, faddr)
+                maddr = re.search(r"\<([^\>]+)\>", faddr)
+                if maddr:
+                    emails.add(maddr.group(1))
+                else:
+                    emails.add(faddr)
 
-        if r.status_code != 200:
-            raise Exception("Failed to get data for patch %s (%d)" % (pid,
-                            r.status_code))
-
-        pdata = r.json()
-        headers = pdata.get("headers")
-
-        for header_name, header_value in headers.iteritems():
-            if header_name.lower() in ["from", "to", "cc"]:
-                for faddr in [x.strip() for x in header_value.split(",")]:
-                    logging.debug("patch=%d; header=%s; email=%s",
-                                  pid, header_name, faddr)
-                    maddr = re.search(r"\<([^\>]+)\>", faddr)
-                    if maddr:
-                        emails.add(maddr.group(1))
-                    else:
-                        emails.add(faddr)
-            elif header_name.lower() == "message-id":
-                message_id = header_value
-
-        return message_id, emails
+        return emails
 
     def get_series_from_url(self, url):
         """
@@ -297,8 +326,9 @@ class skt_patchwork2(object):
                 logging.info("patch [%d] %s", patch.get("id"),
                              patch.get("name"))
                 plist.append(self.patchurl(patch))
-                message_id, emails = self.get_message_id_and_emails(
-                                                            patch.get("id"))
+                message_id = self.get_header_value(patch.get("id"),
+                                                   'Message-ID')
+                emails = self.get_emails(patch.get("id"))
                 logging.debug("patch [%d] message_id: %s", patch.get("id"),
                               message_id)
                 logging.debug("patch [%d] emails: %s", patch.get("id"),
@@ -743,35 +773,61 @@ class skt_patchwork(object):
 
         return patches
 
-    def get_message_id_and_emails(self, pid):
+    def get_header_value(self, patch_id, *keys):
         """
-        Get Message-ID and all involved e-mail addresses from patch message
-        headers.
+        Get the value(s) of requested message headers.
+
+        In case multiple headers with the same key are present (this is
+        relevant for eg. 'Received' header), concatenating the values with
+        double newlines as a divider (we shouldn't need headers which can be
+        present multiple times anyways).
+
+        Args:
+            patch_id: ID of the patch to retrieve header value for.
+            keys:     Keys of the headers which value should be retrieved.
+
+        Returns:
+            A tuple of strings representing the value of requested headers
+            from patch.
+        """
+        mbox_string = stringify(self.rpc.patch_get_mbox(patch_id))
+        mbox_email = email.message_from_string(mbox_string)
+
+        res = ()
+
+        for key in keys:
+            value = mbox_email.get_all(key, [''])
+            if len(value) == 1:
+                res += (header_value[0],)
+            else:
+                res += ('\n\n'.join([val for val in value]),)
+
+        return res
+
+    def get_emails(self, pid):
+        """
+        Get all involved e-mail addresses from patch message headers.
 
         Args:
             pid:    ID of the patch to get header values for.
 
         Returns:
-            The Message-Id header value and a set of e-mail addresses
-            involved with the patch.
+            A set of e-mail addresses involved with the patch.
         """
         emails = set()
 
-        mboxdata = stringify(self.rpc.patch_get_mbox(pid))
-        mbox = email.message_from_string(mboxdata)
+        logging.debug("getting emails for patch %d from 'from', 'to', 'cc'")
+        header_values = self.get_header_value(pid, "From", "To", "Cc")
+        for header_value in header_values:
+            for faddr in [x.strip() for x in mbox[header].split(",") if x]:
+                logging.debug("patch=%d; email=%s", pid, faddr)
+                maddr = re.search(r"\<([^\>]+)\>", faddr)
+                if maddr:
+                    emails.add(maddr.group(1))
+                else:
+                    emails.add(faddr)
 
-        for header in ["From", "To", "Cc"]:
-            if header in mbox:
-                for faddr in [x.strip() for x in mbox[header].split(",")]:
-                    logging.debug("patch=%d; header=%s; email=%s", pid, header,
-                                  faddr)
-                    maddr = re.search(r"\<([^\>]+)\>", faddr)
-                    if maddr:
-                        emails.add(maddr.group(1))
-                    else:
-                        emails.add(faddr)
-
-        return mbox["Message-ID"], emails
+        return emails
 
     def set_patch_check(self, pid, jurl, result):
         """
@@ -796,8 +852,10 @@ class skt_patchwork(object):
         """
         patch = self.get_patch_by_id(pid)
         print "pinfo=%s\n" % patch
-        print "message_id=%s\nemails=%s\n" % \
-            self.get_message_id_and_emails(pid)
+        print "message_id=%s\nemails=%s\n" % (
+            self.get_header_value(pid, 'Message-ID'),
+            self.get_emails(pid)
+        )
 
     # TODO Move this to __init__ or make it a class method
     def get_projectid(self, projectname):
@@ -921,7 +979,8 @@ class skt_patchwork(object):
                 for cpatch in sorted(self.series[seriesid].keys()):
                     patch = self.series[seriesid].get(cpatch)
                     pid = patch.get("id")
-                    message_id, emails = self.get_message_id_and_emails(pid)
+                    message_id = self.get_header_value(pid, 'Message-ID')
+                    emails = self.get_emails(pid)
                     self.log_patch(pid, patch.get("name"), message_id, emails)
                     all_emails = all_emails.union(emails)
                     patchset.append(self.patchurl(patch))
@@ -932,7 +991,8 @@ class skt_patchwork(object):
                 result = PatchsetSummary(message_id, all_emails, patchset)
         # Else, it's a single patch
         else:
-            message_id, emails = self.get_message_id_and_emails(pid)
+            message_id = self.get_header_value(pid, 'Message-ID')
+            emails = self.get_emails(pid)
             self.log_patch(pid, pname, message_id, emails)
             result = PatchsetSummary(message_id, emails,
                                      [self.patchurl(patch)])
