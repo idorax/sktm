@@ -29,13 +29,14 @@ import sktm
 class PatchsetSummary(object):
     """A patchset summary"""
 
-    def __init__(self, message_id, email_addr_set, patch_url_list):
+    def __init__(self, message_id, subject, email_addr_set, patch_url_list):
         """
         Initialize a patchset summary.
 
         Args:
             message_id:     Value of the "Message-Id" header of the e-mail
                             message representing the patchset.
+            subject:        Subject of the message representing the patchset.
             email_addr_set: A set of e-mail addresses involved with the
                             patchset.
             patch_url_list: A list of URLs pointing to Patchwork patch
@@ -44,6 +45,8 @@ class PatchsetSummary(object):
         """
         # Message-Id of the message representing the patchset
         self.message_id = message_id
+        # Subject of the message representing the patchset
+        self.subject = subject
         # A set of e-mail addresses involved with the patchset
         self.email_addr_set = email_addr_set
         # A list of URLs pointing to Patchwork patch objects comprising
@@ -306,6 +309,7 @@ class skt_patchwork2(object):
 
         for series in sdata:
             message_id = None
+            subject = None
             all_emails = set()
             plist = list()
 
@@ -326,11 +330,14 @@ class skt_patchwork2(object):
                 logging.info("patch [%d] %s", patch.get("id"),
                              patch.get("name"))
                 plist.append(self.patchurl(patch))
-                message_id = self.get_header_value(patch.get("id"),
-                                                   'Message-ID')
+                message_id, subject = self.get_header_value(patch.get("id"),
+                                                            'Message-ID',
+                                                            'Subject')
                 emails = self.get_emails(patch.get("id"))
                 logging.debug("patch [%d] message_id: %s", patch.get("id"),
                               message_id)
+                logging.debug("patch [%d] subject: %s", patch.get("id"),
+                              subject)
                 logging.debug("patch [%d] emails: %s", patch.get("id"),
                               emails)
                 all_emails = all_emails.union(emails)
@@ -339,10 +346,14 @@ class skt_patchwork2(object):
             if plist:
                 logging.debug("series [%d] message_id: %s", series.get("id"),
                               message_id)
+                logging.debug("series [%d] subject: %s", series.get("id"),
+                              subject)
                 logging.debug("series [%d] emails: %s", series.get("id"),
                               all_emails)
-                patchsets.append(
-                            PatchsetSummary(message_id, all_emails, plist))
+                patchsets.append(PatchsetSummary(message_id,
+                                                 subject,
+                                                 all_emails,
+                                                 plist))
 
         link = r.headers.get("Link")
         if link is not None:
@@ -973,28 +984,37 @@ class skt_patchwork(object):
                 logging.info("patchset: %s", seriesid)
 
                 message_id = None
+                subject = None
                 all_emails = set()
                 patchset = list()
                 # For each patch position in series in order
                 for cpatch in sorted(self.series[seriesid].keys()):
                     patch = self.series[seriesid].get(cpatch)
                     pid = patch.get("id")
-                    message_id = self.get_header_value(pid, 'Message-ID')
+                    message_id, subject = self.get_header_value(pid,
+                                                                'Message-ID',
+                                                                'Subject')
                     emails = self.get_emails(pid)
                     self.log_patch(pid, patch.get("name"), message_id, emails)
                     all_emails = all_emails.union(emails)
                     patchset.append(self.patchurl(patch))
 
                 logging.info("message_id: %s", message_id)
+                logging.info("subject: %s", subject)
                 logging.info("emails: %s", all_emails)
                 logging.info("---")
-                result = PatchsetSummary(message_id, all_emails, patchset)
+                result = PatchsetSummary(message_id,
+                                         subject,
+                                         all_emails,
+                                         patchset)
         # Else, it's a single patch
         else:
-            message_id = self.get_header_value(pid, 'Message-ID')
+            message_id, subject = self.get_header_value(pid,
+                                                        'Message-ID',
+                                                        'Subject')
             emails = self.get_emails(pid)
             self.log_patch(pid, pname, message_id, emails)
-            result = PatchsetSummary(message_id, emails,
+            result = PatchsetSummary(message_id, subject, emails,
                                      [self.patchurl(patch)])
 
         if pid > self.lastpatch:

@@ -171,7 +171,8 @@ class skt_jenkins(object):
 
     # FIXME Clarify/fix argument names
     def build(self, jobname, baserepo=None, ref=None, baseconfig=None,
-              message_id=None, emails=set(), patchwork=[], makeopts=None):
+              message_id=None, subject=None, emails=set(), patchwork=[],
+              makeopts=None):
         """
         Submit a build of a patchset.
 
@@ -182,6 +183,8 @@ class skt_jenkins(object):
             baseconfig: Kernel configuration URL.
             message_id: Value of the "Message-Id" header of the e-mail
                         message representing the patchset, or None if unknown.
+            subject:    Subject of the message representing the patchset, or
+                        None if unknown.
             emails:     Set of e-mail addresses involved with the patchset to
                         send notifications to.
             patchwork:  List of URLs pointing to patches to apply.
@@ -203,6 +206,9 @@ class skt_jenkins(object):
 
         if message_id:
             params["message_id"] = message_id
+
+        if subject:
+            params["subject"] = subject
 
         if emails:
             params["emails"] = ",".join(emails)
