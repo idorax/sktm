@@ -809,7 +809,7 @@ class skt_patchwork(object):
         for key in keys:
             value = mbox_email.get_all(key, [''])
             if len(value) == 1:
-                res += (header_value[0],)
+                res += (value[0],)
             else:
                 res += ('\n\n'.join([val for val in value]),)
 
@@ -830,7 +830,7 @@ class skt_patchwork(object):
         logging.debug("getting emails for patch %d from 'from', 'to', 'cc'")
         header_values = self.get_header_value(pid, "From", "To", "Cc")
         for header_value in header_values:
-            for faddr in [x.strip() for x in mbox[header].split(",") if x]:
+            for faddr in [x.strip() for x in header_value.split(",") if x]:
                 logging.debug("patch=%d; email=%s", pid, faddr)
                 maddr = re.search(r"\<([^\>]+)\>", faddr)
                 if maddr:
