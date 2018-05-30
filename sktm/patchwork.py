@@ -27,32 +27,137 @@ import xmlrpclib
 import sktm
 
 
+class ObjectSummary(object):
+    """A summary of an mbox-based Patchwork object"""
+
+    def __init__(self, url, date=None, patch_id=None):
+        """
+        Initialize an object summary.
+
+        Args:
+            url:        Patchwork object URL. It should be possible to
+                        retrieve the object's mbox by fetching from this URL
+                        with "/mbox" appended.
+            date:       The mbox "Date" header value, in the
+                        "YYYY-MM-DDTHH:MM:SS" format, where "T" is literal.
+            patch_id:   ID of a Patchwork patch, for patch objects.
+        """
+        # User-facing Patchwork object URL
+        self.url = url
+        # "Date" header value
+        self.date = date
+        # Patchwork patch ID for patch objects
+        self.patch_id = patch_id
+
+    def is_patch(self):
+        """
+        Check if the object is a patch.
+
+        Returns:
+            True if the object is a patch object, False if not.
+        """
+        return not not self.patch_id
+
+    def get_mbox_url(self):
+        """
+        Get the URL pointing at the object's mbox.
+
+        Returns:
+            URL pointing at the object's mbox.
+        """
+        return self.url + "/mbox"
+
+
 class PatchsetSummary(object):
     """A patchset summary"""
 
-    def __init__(self, message_id, subject, email_addr_set, patch_url_list):
+    def __init__(self):
+        """Initialize a patchset summary"""
+        # The "Message-Id" header of the message representing the patchset
+        self.message_id = None
+        # The subject of the message representing the patchset
+        self.subject = None
+        # A set of e-mail addresses involved with the patchset
+        self.email_addr_set = set()
+        # A list of object summaries (ObjectSummary objects) of patches
+        # comprising the patchset, in the order they should be applied in
+        self.patch_list = list()
+
+    def set_message_id(self, message_id):
         """
-        Initialize a patchset summary.
+        Set "Message-Id" header value of the message representing the
+        patchset.
 
         Args:
-            message_id:     Value of the "Message-Id" header of the e-mail
-                            message representing the patchset.
-            subject:        Subject of the message representing the patchset.
-            email_addr_set: A set of e-mail addresses involved with the
-                            patchset.
-            patch_url_list: A list of URLs pointing to Patchwork patch
-                            objects comprising the patchset, in order they
-                            should be applied in.
+            message_id: The "Message-Id" header value to set.
         """
-        # Message-Id of the message representing the patchset
         self.message_id = message_id
-        # Subject of the message representing the patchset
+
+    def set_subject(self, subject):
+        """
+        Set the subject of the message representing the patchset.
+
+        Args:
+            subject:    The subject to set.
+        """
         self.subject = subject
-        # A set of e-mail addresses involved with the patchset
-        self.email_addr_set = email_addr_set
-        # A list of URLs pointing to Patchwork patch objects comprising
-        # the patchset
-        self.patch_url_list = patch_url_list
+
+    def merge_email_addr_set(self, email_addr_set):
+        """
+        Merge a set of e-mail addresses involved with the patchset into
+        the set collected so far.
+
+        Args:
+            email_addr_set: The e-mail address set to merge.
+        """
+        self.email_addr_set |= email_addr_set
+
+    def add_patch(self, patch):
+        """
+        Add a patch object summary to the list of the patches comprising the
+        patchset.
+        """
+        self.patch_list.append(patch)
+
+    def is_empty(self):
+        """
+        Check if a patchset summary is empty, i.e. doesn't have any patches.
+
+        Returns:
+            True if the patchset summary is empty, False otherwise.
+        """
+        return len(self.patch_list) == 0
+
+    def get_patch_info_list():
+        """
+        Get a list of patch ID/date tuples for use with database routines.
+
+        Returns:
+            A list of tuples, each containing a Patchwork patch ID and the
+            value of the "Date" header of the patches comprising the patchset,
+            in the order they should be applied in.
+        """
+        return [(patch.id, patch.date) for patch in self.patch_list]
+
+    def get_patch_url_list():
+        """
+        Get a list of patch URLs.
+
+        Returns:
+            A list of URLs of the patches comprising the patchset, in the
+            order they should be applied in.
+        """
+        return [patch.url for patch in self.patch_list]
+
+    def get_patch_mbox_url_list():
+        """
+        Get a list of patch mbox URLs.
+
+        Returns:
+            A list of URLs pointing to mbox'es of the patches comprising the
+            patchset, in the order they should be applied in.
+        """
+        return [patch.get_mbox_url() for patch in self.patch_list]
 
 
 # TODO Move common code to a common parent class
@@ -309,10 +414,7 @@ class skt_patchwork2(object):
             sdata = [sdata]
 
         for series in sdata:
-            message_id = None
-            subject = None
-            all_emails = set()
-            plist = list()
+            patchset = PatchsetSummary()
 
             if not series.get("received_all"):
                 logging.info("skipping incomplete series: [%d] %s",
@@ -330,7 +432,6 @@ class skt_patchwork2(object):
             for patch in series.get("patches"):
                 logging.info("patch [%d] %s", patch.get("id"),
                              patch.get("name"))
-                plist.append(self.patchurl(patch))
                 message_id, subject = self.get_header_value(patch.get("id"),
                                                             'Message-ID',
                                                             'Subject')
@@ -341,20 +442,22 @@ class skt_patchwork2(object):
                               subject)
                 logging.debug("patch [%d] emails: %s", patch.get("id"),
                               emails)
-                all_emails = all_emails.union(emails)
+                patchset.set_message_id(message_id)
+                patchset.set_subject(subject)
+                patchset.merge_email_addr_set(emails)
+                patchset.add_patch(
+                    ObjectSummary(self.patchurl(patch),
+                                  patch.get("date"), patch.get("id")))
             logging.info("---")
 
-            if plist:
+            if not patchset.is_empty():
                 logging.debug("series [%d] message_id: %s", series.get("id"),
-                              message_id)
+                              patchset.message_id)
                 logging.debug("series [%d] subject: %s", series.get("id"),
-                              subject)
+                              patchset.subject)
                 logging.debug("series [%d] emails: %s", series.get("id"),
-                              all_emails)
-                patchsets.append(PatchsetSummary(message_id,
-                                                 subject,
-                                                 all_emails,
-                                                 plist))
+                              patchset.email_addr_set)
+                patchsets.append(patchset)
 
         link = r.headers.get("Link")
         if link is not None:
@@ -982,10 +1085,8 @@ class skt_patchwork(object):
                 logging.info("---")
                 logging.info("patchset: %s", seriesid)
 
-                message_id = None
-                subject = None
-                all_emails = set()
-                patchset = list()
+                result = PatchsetSummary()
+
                 # For each patch position in series in order
                 for cpatch in sorted(self.series[seriesid].keys()):
                     patch = self.series[seriesid].get(cpatch)
@@ -995,17 +1096,18 @@ class skt_patchwork(object):
                                                                 'Subject')
                     emails = self.get_emails(pid)
                     self.log_patch(pid, patch.get("name"), message_id, emails)
-                    all_emails = all_emails.union(emails)
-                    patchset.append(self.patchurl(patch))
+                    result.set_message_id(message_id)
+                    result.set_subject(subject)
+                    result.merge_email_addr_set(emails)
+                    result.add_patch(
+                        ObjectSummary(self.patchurl(patch),
+                                      patch.get("date").replace(" ", "T"),
+                                      pid))
 
-                logging.info("message_id: %s", message_id)
-                logging.info("subject: %s", subject)
-                logging.info("emails: %s", all_emails)
+                logging.info("message_id: %s", result.message_id)
+                logging.info("subject: %s", result.subject)
+                logging.info("emails: %s", result.email_addr_set)
                 logging.info("---")
-                result = PatchsetSummary(message_id,
-                                         subject,
-                                         all_emails,
-                                         patchset)
         # Else, it's a single patch
         else:
             message_id, subject = self.get_header_value(pid,
@@ -1013,8 +1115,14 @@ class skt_patchwork(object):
                                                         'Subject')
             emails = self.get_emails(pid)
             self.log_patch(pid, pname, message_id, emails)
-            result = PatchsetSummary(message_id, subject, emails,
-                                     [self.patchurl(patch)])
+            result = PatchsetSummary()
+            result.set_message_id(message_id)
+            result.set_subject(subject)
+            result.merge_email_addr_set(emails)
+            result.add_patch(
+                    ObjectSummary(self.patchurl(patch),
+                                  patch.get("date").replace(" ", "T"),
+                                  pid))
 
         if pid > self.lastpatch:
             self.lastpatch = pid
