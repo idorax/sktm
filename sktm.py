@@ -57,6 +57,8 @@ def setup_parser():
                                   action="store_true", default=False)
     parser_patchwork.add_argument("--apikey", type=str,
                                   help="API key to write down results")
+    parser_patchwork.add_argument("--filter", type=str,
+                                  help="Patchset filter program")
     parser_patchwork.set_defaults(func=cmd_patchwork)
 
     parser_testinfo = subparsers.add_parser("testinfo")
@@ -122,7 +124,8 @@ if __name__ == '__main__':
     logging.debug("cfg=%s", cfg)
 
     sw = sktm.watcher(cfg.get("jurl"), cfg.get("jlogin"), cfg.get("jpass"),
-                      cfg.get("jjname"), cfg.get("db"), cfg.get("makeopts"))
+                      cfg.get("jjname"), cfg.get("db"),
+                      cfg.get("filter"), cfg.get("makeopts"))
 
     args.func(sw, cfg)
     try:

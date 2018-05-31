@@ -16,6 +16,7 @@ import enum
 import logging
 import os
 import re
+import subprocess
 import time
 import sktm.db
 import sktm.jenkins
@@ -41,7 +42,7 @@ class jtype(enum.IntEnum):
 # TODO This is no longer just a watcher. Rename/refactor/describe accordingly.
 class watcher(object):
     def __init__(self, jenkinsurl, jenkinslogin, jenkinspassword,
-                 jenkinsjobname, dbpath, makeopts=None):
+                 jenkinsjobname, dbpath, filter, makeopts=None):
         """
         Initialize a "watcher".
 
@@ -51,6 +52,15 @@ class watcher(object):
             jenkinspassword:    Jenkins user password.
             jenkinsjobname:     Name of the Jenkins job to trigger and watch.
             dbpath:             Path to the job status database file.
+            filter:             The name of a patchset filter program.
+                                The program should accept a list of mbox URLs
+                                as its arguments, pointing to the patches to
+                                apply, and also a "-c/--cover" option,
+                                specifying the cover letter mbox URL, if any.
+                                The program must exit with zero if the
+                                patchset can be tested, one if it shouldn't be
+                                tested at all, and 127 if an error occurred.
+                                All other exit codes are reserved.
             makeopts:           Extra arguments to pass to "make" when
                                 building.
         """
@@ -62,6 +72,8 @@ class watcher(object):
                                            jenkinspassword)
         # Jenkins project name
         self.jobname = jenkinsjobname
+        # Patchset filter program
+        self.filter = filter
         # Extra arguments to pass to "make"
         self.makeopts = makeopts
         # List of pending Jenkins builds, each one represented by a 3-tuple
@@ -163,6 +175,46 @@ class watcher(object):
                                       makeopts=self.makeopts),
                         None))
 
+    def filter_patchsets(self, patchset_summary_list):
+        """
+        Filter patchsets, determining which ones are ready for testing, and
+        which shouldn't be tested at all.
+
+        Args:
+            patchset_summary_list:  The list of summaries of patchsets
+                                    to filter.
+        Returns:
+            A tuple of patchset summary lists:
+                - patchsets ready for testing,
+                - patchsets which should not be tested
+        """
+        ready = []
+        dropped = []
+
+        for patchset_summary in patchset_summary_list:
+            argv = [self.filter]
+            if patchset_summary.cover_letter:
+                argv += ["--cover",
+                         patchset_summary.cover_letter.get_mbox_url()]
+            argv += patchset_summary.get_patch_mbox_url_list()
+            # TODO Shell-quote
+            cmd = " ".join(argv)
+            # TODO Redirect output to logs
+            status = subprocess.call(argv)
+            if status == 0:
+                ready.append(patchset_summary)
+            elif status == 1:
+                dropped.append(patchset_summary)
+            elif status == 127:
+                raise Exception("Filter command %s failed" % cmd)
+            elif status < 0:
+                raise Exception("Filter command %s was terminated "
+                                "by signal %d" % cmd, -status)
+            else:
+                raise Exception("Filter command %s returned "
+                                "invalid status %d" % cmd, status)
+        return ready, dropped
+
     def check_patchwork(self):
         """
         Submit and register Jenkins builds for patchsets which appeared in
@@ -180,7 +232,7 @@ class watcher(object):
         for cpw in self.pw:
             # Get patchset summaries for all patches the Patchwork interface
             # hasn't seen yet
-            patchsets = cpw.get_new_patchsets()
+            patchsets, _ = self.filter_patchsets(cpw.get_new_patchsets())
             # Add patchset summaries for all patches staying pending for
             # longer than 12 hours
             patchsets += cpw.get_patchsets(
