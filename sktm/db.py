@@ -440,7 +440,7 @@ class skt_db(object):
                 seriesid = 1 + res[0]
 
         for (pid, pname, purl, baseurl, projid, pdate) in patches:
-            sourceid = self.get_sourceid(baseurl, projid)
+            self.get_sourceid(baseurl, projid)
             self.commit_patch(pid, pname, purl, seriesid, baseurl, projid,
                               pdate)
 

@@ -220,7 +220,7 @@ class skt_jenkins(object):
             params["makeopts"] = makeopts
 
         logging.debug(params)
-        job = self.server.get_job(jobname)
+        self.server.get_job(jobname)
         expected_id = self.server.get_job(jobname).get_next_build_number()
         self.server.build_job(jobname, params)
         build = self.find_build(jobname, params, expected_id)

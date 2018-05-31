@@ -139,7 +139,7 @@ class PatchsetSummary(object):
         """
         return len(self.patch_list) == 0
 
-    def get_patch_info_list():
+    def get_patch_info_list(self):
         """
         Get a list of patch ID/date tuples for use with database routines.
 
@@ -150,7 +150,7 @@ class PatchsetSummary(object):
         """
         return [(patch.id, patch.date) for patch in self.patch_list]
 
-    def get_patch_url_list():
+    def get_patch_url_list(self):
         """
         Get a list of patch URLs.
 
@@ -160,7 +160,7 @@ class PatchsetSummary(object):
         """
         return [patch.url for patch in self.patch_list]
 
-    def get_patch_mbox_url_list():
+    def get_patch_mbox_url_list(self):
         """
         Get a list of patch mbox URLs.
 
@@ -217,8 +217,9 @@ class RpcWrapper:
         # Returns just the real return value, without the version info.
         v = self.version
         if r[0] != v:
-            raise RpcProtocolMismatch('Patchwork API mismatch (%i, '
-                                      'expected %i)' % (r[0], v))
+            raise Exception(
+                'Patchwork API mismatch (%i, expected %i)' % (r[0], v)
+            )
         return r[1]
 
     def _return_unwrapper(self, fn):
