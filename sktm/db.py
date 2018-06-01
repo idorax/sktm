@@ -165,45 +165,89 @@ class skt_db(object):
 
         return result[0]
 
-    def get_last_checked_patch(self, baseurl, projid):
-        sourceid = self.get_sourceid(baseurl, projid)
+    def get_last_checked_patch(self, baseurl, project_id):
+        """Get the patch id of the last patch that was checked.
+
+        Args:
+            baseurl:    Base URL of the Patchwork instance.
+            project_id: Project ID in Patchwork.
+
+        """
+        sourceid = self.get_sourceid(baseurl, project_id)
 
         self.cur.execute('SELECT patch.id FROM patch WHERE '
                          'patchsource_id = ? '
                          'ORDER BY id DESC LIMIT 1',
                          (sourceid,))
-        res = self.cur.fetchone()
-        return None if res is None else res[0]
+        result = self.cur.fetchone()
 
-    def get_last_pending_patch(self, baseurl, projid):
-        sourceid = self.get_sourceid(baseurl, projid)
+        if not result:
+            return None
+
+        return result[0]
+
+    def get_last_pending_patch(self, baseurl, project_id):
+        """Get the patch id of the last patch in the pending list.
+
+        Args:
+            baseurl:    Base URL of the Patchwork instance.
+            project_id: Project ID in Patchwork.
+
+        """
+        sourceid = self.get_sourceid(baseurl, project_id)
 
         self.cur.execute('SELECT id FROM pendingpatches WHERE '
                          'patchsource_id = ? '
                          'ORDER BY id DESC LIMIT 1',
                          (sourceid,))
-        res = self.cur.fetchone()
-        return None if res is None else res[0]
+        result = self.cur.fetchone()
 
-    def get_last_checked_patch_date(self, baseurl, projid):
-        sourceid = self.get_sourceid(baseurl, projid)
+        if not result:
+            return None
+
+        return result[0]
+
+    def get_last_checked_patch_date(self, baseurl, project_id):
+        """Get date of last checked patch.
+
+        Args:
+            baseurl:    Base URL of the Patchwork instance.
+            project_id: Project ID in Patchwork.
+
+        """
+        sourceid = self.get_sourceid(baseurl, project_id)
 
         self.cur.execute('SELECT patch.date FROM patch WHERE '
                          'patchsource_id = ? '
                          'ORDER BY date DESC LIMIT 1',
                          (sourceid,))
-        res = self.cur.fetchone()
-        return None if res is None else res[0]
+        result = self.cur.fetchone()
 
-    def get_last_pending_patch_date(self, baseurl, projid):
-        sourceid = self.get_sourceid(baseurl, projid)
+        if not result:
+            return None
+
+        return result[0]
+
+    def get_last_pending_patch_date(self, baseurl, project_id):
+        """Get date of last pending patch.
+
+        Args:
+            baseurl:    Base URL of the Patchwork instance.
+            project_id: Project ID in Patchwork.
+
+        """
+        sourceid = self.get_sourceid(baseurl, project_id)
 
         self.cur.execute('SELECT pdate FROM pendingpatches WHERE '
                          'patchsource_id = ? '
                          'ORDER BY pdate DESC LIMIT 1',
                          (sourceid,))
-        res = self.cur.fetchone()
-        return None if res is None else res[0]
+        result = self.cur.fetchone()
+
+        if not result:
+            return None
+
+        return result[0]
 
     def get_expired_pending_patches(self, baseurl, projid, exptime=86400):
         """
@@ -239,70 +283,128 @@ class skt_db(object):
 
         return patchlist
 
-    def get_baselineid(self, brid, commithash):
+    def get_baselineid(self, baserepo_id, commithash):
+        """Get the baseline_id for a particular baserepo_id and commithash.
+
+        Args:
+            baserepo_id:    ID of the git repository.
+            commithash:     Commit SHA of the baseline commit.
+
+        """
         self.cur.execute('SELECT id FROM baseline WHERE '
                          'baserepo_id = ? AND commitid = ?',
-                         (brid, commithash))
-        res = self.cur.fetchone()
-        return None if res is None else res[0]
+                         (baserepo_id, commithash))
+        result = self.cur.fetchone()
 
-    def get_commitdate(self, baserepo, commitid):
-        brid = self.get_repoid(baserepo)
+        if not result:
+            return None
+
+        return result[0]
+
+    def get_commitdate(self, baserepo, commithash):
+        """Get the date of a commit in a baseline.
+
+        Args:
+            baserepo:   The base repo URL.
+            commithash: Commit SHA of the baseline commit.
+
+        Returns:
+            Date string or None if the commithash is not found.
+
+        """
+        baserepo_id = self.get_repoid(baserepo)
 
         self.cur.execute('SELECT commitdate FROM baseline WHERE '
                          'commitid = ? AND '
                          'baserepo_id = ?',
-                         (commitid, brid))
-        res = self.cur.fetchone()
-        return None if res is None else res[0]
+                         (commithash, baserepo_id))
+        result = self.cur.fetchone()
+
+        if not result:
+            return None
+
+        return result[0]
 
     def get_baselineresult(self, baserepo, commithash):
-        brid = self.get_repoid(baserepo)
+        """Get the result of a baseline testrun.
+
+        Args:
+            baserepo:   The base repo URL.
+            commithash: Commit SHA of the baseline commit.
+
+        Returns:
+            Result ID of a baseline test run, or None if the test run does not
+            exist.
+
+        """
+        baserepo_id = self.get_repoid(baserepo)
 
         self.cur.execute('SELECT testrun.result_id FROM baseline, testrun '
                          'WHERE baseline.commitid = ? AND '
                          'baseline.baserepo_id = ? AND '
                          'baseline.testrun_id = testrun.id '
                          'ORDER BY baseline.commitdate DESC LIMIT 1',
-                         (commithash, brid))
-        res = self.cur.fetchone()
-        return None if res is None else sktm.tresult(res[0])
+                         (commithash, baserepo_id))
+        result = self.cur.fetchone()
+
+        if not result:
+            return None
+
+        return sktm.tresult(result[0])
 
     def get_stable(self, baserepo):
-        """
-        Get the latest stable commit ID for a baseline Git repo URL.
+        """Get the latest stable commit ID for a baseline Git repo URL.
 
         Args:
             baserepo:   Baseline Git repo URL.
 
         Returns:
             Latest stable commit ID, or None, if there are no stable commits.
+
         """
-        brid = self.get_repoid(baserepo)
+        baserepo_id = self.get_repoid(baserepo)
 
         self.cur.execute('SELECT commitid FROM baseline, testrun WHERE '
                          'baseline.baserepo_id = ? AND '
                          'baseline.testrun_id = testrun.id AND '
                          'testrun.result_id = 0 '
                          'ORDER BY baseline.commitdate DESC LIMIT 1',
-                         (brid, ))
+                         (baserepo_id, ))
 
-        res = self.cur.fetchone()
-        return None if res is None else res[0]
+        result = self.cur.fetchone()
+
+        if not result:
+            return None
+
+        return result[0]
 
     def get_latest(self, baserepo):
-        brid = self.get_repoid(baserepo)
+        """Get the commit hash of the latest baseline.
+
+        Args:
+            baserepo:   Baseline Git repo URL.
+
+        Returns:
+            Commit SHA of latest baseline, or None, if the baseline does not
+            exist.
+
+        """
+        baserepo_id = self.get_repoid(baserepo)
 
         self.cur.execute('SELECT commitid FROM baseline WHERE '
                          'baserepo_id = ? '
                          'ORDER BY baseline.commitdate DESC LIMIT 1',
-                         (brid, ))
+                         (baserepo_id, ))
+        result = self.cur.fetchone()
 
-        res = self.cur.fetchone()
-        return None if res is None else res[0]
+        if not result:
+            return None
 
-    def set_patchset_pending(self, baseurl, projid, patchset):
-        """
+        return result[0]
+
+    def set_patchset_pending(self, baseurl, project_id, patchset):
+        """Add a patch to pendingpatches or update an existing entry.
+
         Add each specified patch to the list of "pending" patches, with
         specifed patch date, for specified Patchwork base URL and project ID,
         and marked with current timestamp. Replace any previously added
@@ -312,98 +414,144 @@ class skt_db(object):
         Args:
             baseurl:    Base URL of the Patchwork instance the project ID and
                         patch IDs belong to.
-            projid:     ID of the Patchwork project the patch IDs belong to.
+            poject_id:  ID of the Patchwork project the patch IDs belong to.
             patchset:   List of info tuples for patches to add to the list,
                         where each tuple contains the patch ID and a free-form
                         patch date string.
+
         """
-        psid = self.get_sourceid(baseurl, projid)
+        patchset_id = self.get_sourceid(baseurl, project_id)
         tstamp = int(time.time())
 
         logging.debug("setting patches as pending: %s", patchset)
-
         self.cur.executemany('INSERT OR REPLACE INTO '
                              'pendingpatches(id, pdate, patchsource_id, '
                              'timestamp) '
                              'VALUES(?, ?, ?, ?)',
-                             [(pid, pdate, psid, tstamp) for
-                              (pid, pdate) in patchset])
+                             [(patch_id, patch_date, patchset_id, tstamp) for
+                              (patch_id, patch_date) in patchset])
         self.conn.commit()
 
-    def unset_patchset_pending(self, baseurl, projid, patchset):
-        """
+    def unset_patchset_pending(self, baseurl, project_id, patchset):
+        """Remove a patch from the list of pending patches.
+
         Remove each specified patch from the list of "pending" patches, for
         the specified Patchwork base URL and project ID.
 
         Args:
             baseurl:    Base URL of the Patchwork instance the project ID and
                         patch IDs belong to.
-            projid:     ID of the Patchwork project the patch IDs belong to.
+            project_id: ID of the Patchwork project the patch IDs belong to.
             patchset:   List of IDs of patches to be removed from the list.
+
         """
-        psid = self.get_sourceid(baseurl, projid)
+        patchset_id = self.get_sourceid(baseurl, project_id)
 
         logging.debug("removing patches from pending list: %s", patchset)
 
         self.cur.executemany('DELETE FROM pendingpatches WHERE id = ? '
                              'AND patchsource_id = ?',
-                             [(pid, psid) for pid in patchset])
+                             [(patch_id, patchset_id) for
+                              patch_id in patchset])
         self.conn.commit()
 
     def update_baseline(self, baserepo, commithash, commitdate,
-                        result, buildid):
-        logging.debug("update_baseline: repo=%s; commit=%s; result=%s",
-                      baserepo, commithash, result)
-        brepoid = self.get_repoid(baserepo)
+                        result, build_id):
+        """Update the baseline commit for a repo.
 
-        testrunid = self.commit_testrun(result, buildid)
+        Args:
+            baserepo:   Baseline Git repo URL.
+            commithash: Commit SHA of the baseline commit.
+            commitdate: Date of the commit.
+            result:     Result ID of the test run.
+            build_id:   The build ID of the test run.
+
+        """
+        baserepo_id = self.get_repoid(baserepo)
+
+        testrun_id = self.commit_testrun(result, build_id)
 
         prev_res = self.get_baselineresult(baserepo, commithash)
         logging.debug("previous result: %s", prev_res)
+
         if prev_res is None:
+            logging.debug("creating baseline: repo=%s; commit=%s; result=%s",
+                          baserepo, commithash, result)
             self.cur.execute('INSERT INTO '
                              'baseline(baserepo_id, commitid, commitdate, '
                              'testrun_id) VALUES(?,?,?,?)',
-                             (brepoid, commithash, commitdate, testrunid))
+                             (baserepo_id, commithash, commitdate,
+                              testrun_id))
         elif result >= prev_res:
+            logging.debug("updating baseline: repo=%s; commit=%s; result=%s",
+                          baserepo, commithash, result)
             self.cur.execute('UPDATE baseline SET testrun_id = ? '
                              'WHERE commitid = ? AND baserepo_id = ?',
-                             (testrunid, commithash, brepoid))
+                             (testrun_id, commithash, baserepo_id))
+
         self.conn.commit()
 
     # FIXME: There is a chance of series_id collisions between different
     # patchwork instances
     def get_series_result(self, series_id):
+        """Get a result_id from a testrun of a patch series.
+
+        Args:
+            series_id:  Series ID from Patchwork.
+
+        """
         self.cur.execute('SELECT testrun.result_id FROM patchtest, testrun '
                          'WHERE patchtest.patch_series_id = ? '
                          'AND patchtest.testrun_id = testrun.id '
                          'LIMIT 1',
                          (series_id, ))
+        result = self.cur.fetchone()
 
-        res = self.cur.fetchone()
-        return None if res is None else res[0]
+        if not result:
+            return None
 
-    def commit_patchtest(self, baserepo, commithash, patches, result, buildid,
-                         series=None):
+        return result[0]
+
+    def commit_patchtest(self, baserepo, commithash, patches, result,
+                         build_id, series=None):
+        """Add a patchtest for a patch.
+
+        Args:
+            baserepo:   Baseline Git repo URL.
+            commithash: Commit SHA of the baseline commit.
+            patches:    List of patches that were tested
+            result:     Result ID of the test run.
+            build_id:   The build ID of the test run.
+            series:     Series ID from patchwork.
+
+        """
         logging.debug("commit_patchtest: repo=%s; commit=%s; patches=%d; "
                       "result=%s", baserepo, commithash, len(patches), result)
-        brepoid = self.get_repoid(baserepo)
-        baselineid = self.get_baselineid(brepoid, commithash)
-        testrunid = self.commit_testrun(result, buildid)
-        seriesid = self.commit_series(patches, series)
+        baserepo_id = self.get_repoid(baserepo)
+        baseline_id = self.get_baselineid(baserepo_id, commithash)
+        testrun_id = self.commit_testrun(result, build_id)
+        series_id = self.commit_series(patches, series)
 
-        for (pid, pname, purl, baseurl, projid, pdate) in patches:
+        for (patch_id, patch_name, patch_url, baseurl, project_id,
+             patch_date) in patches:
             # TODO: Can accumulate per-project list instead of doing it one by
             # one
-            self.unset_patchset_pending(baseurl, projid, [pid])
+            self.unset_patchset_pending(baseurl, project_id, [patch_id])
 
         self.cur.execute('INSERT INTO '
                          'patchtest(patch_series_id, baseline_id, testrun_id) '
                          'VALUES(?,?,?)',
-                         (seriesid, baselineid, testrunid))
+                         (series_id, baseline_id, testrun_id))
         self.conn.commit()
 
     def commit_testrun(self, result, buildid):
+        """Add a test run to the database.
+
+        Args:
+            result:     Result of the test run.
+            build_id:   The build ID of the test run.
+
+        """
         logging.debug("commit_testrun: result=%s; buildid=%d", result, buildid)
         self.cur.execute('INSERT INTO testrun(result_id, build_id) '
                          'VALUES(?,?)',
@@ -418,33 +566,66 @@ class skt_db(object):
 
         return testrunid
 
-    def commit_patch(self, pid, pname, purl, sid, baseurl, projid, pdate):
-        logging.debug("commit_patch: pid=%s; sid=%s", pid, sid)
-        sourceid = self.get_sourceid(baseurl, projid)
+    def commit_patch(self, patch_id, patch_name, patch_url, series_id,
+                     baseurl, project_id, patch_date):
+        """Create/update a patch record in the database.
+
+        Args:
+            patch_id:       Patch ID.
+            patch_name:     Patch name (subject line).
+            patch_url:      URL to the patch in Patchwork.
+            series_id:      The ID of the series that contains the patch.
+            baseurl:        URL of the git repo.
+            project_id:     ID of the project in Patchwork.
+            patch_date:     Timestamp.
+
+        """
+        # pylint: disable=too-many-arguments
+        logging.debug("commit_patch: pid=%s; sid=%s", patch_id, series_id)
+        source_id = self.get_sourceid(baseurl, project_id)
         self.cur.execute('INSERT OR REPLACE INTO patch(id, name, url, '
                          'patchsource_id, series_id, date) '
                          'VALUES(?,?,?,?,?,?)',
-                         (pid, pname, purl, sourceid, sid, pdate))
+                         (patch_id, patch_name, patch_url, source_id,
+                          series_id, patch_date))
         self.conn.commit()
 
-    def commit_series(self, patches, seriesid=None):
-        logging.debug("commit_series: %s (%s)", patches, seriesid)
-        if seriesid is None:
-            seriesid = 1
+    def commit_series(self, patches, series_id=None):
+        """Create patch records for a list of patches.
+
+        Args:
+            patches:    List of patches to insert into the database.
+            series_id:  Series ID from patchwork that contains the patches.
+
+        """
+        logging.debug("commit_series: %s (%s)", patches, series_id)
+
+        if series_id is None:
+
+            # Set a starting series_id in case the database is empty
+            series_id = 1
+
+            # Find the last series_id in the database
             self.cur.execute('SELECT series_id FROM patch '
                              'ORDER BY series_id DESC LIMIT 1')
-            res = self.cur.fetchone()
-            if res is not None:
-                seriesid = 1 + res[0]
+            result = self.cur.fetchone()
 
-        for (pid, pname, purl, baseurl, projid, pdate) in patches:
-            self.get_sourceid(baseurl, projid)
-            self.commit_patch(pid, pname, purl, seriesid, baseurl, projid,
-                              pdate)
+            # Set the series_id to the next id
+            if result:
+                series_id = 1 + result[0]
+
+        for (patch_id, patch_name, patch_url, baseurl, project_id,
+             patch_date) in patches:
+            # If the source_id doesn't exist, this method will create it.
+            self.get_sourceid(baseurl, project_id)
+
+            # Add the patches to the database
+            self.commit_patch(patch_id, patch_name, patch_url, series_id,
+                              baseurl, project_id, patch_date)
 
         self.conn.commit()
 
-        return seriesid
+        return series_id
 
     def dump_baseline_tests(self):
         self.cur.execute('SELECT baserepo.url, baseline.commitid, '
