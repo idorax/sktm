@@ -65,8 +65,7 @@ class skt_db(object):
                   id INTEGER PRIMARY KEY,
                   pdate TEXT,
                   baseurl TEXT,
-                  timestamp INTEGER,
-                  FOREIGN KEY(patchsource_id) REFERENCES patchsource(id)
+                  timestamp INTEGER
                 );
 
                 CREATE TABLE testrun(
