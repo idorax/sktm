@@ -482,14 +482,14 @@ class skt_db(object):
                              'testrun_id) VALUES(?,?,?,?)',
                              (baserepo_id, commithash, commitdate,
                               testrun_id))
+            self.conn.commit()
         elif result >= prev_res:
             logging.debug("updating baseline: repo=%s; commit=%s; result=%s",
                           baserepo, commithash, result)
             self.cur.execute('UPDATE baseline SET testrun_id = ? '
                              'WHERE commitid = ? AND baserepo_id = ?',
                              (testrun_id, commithash, baserepo_id))
-
-        self.conn.commit()
+            self.conn.commit()
 
     # FIXME: There is a chance of series_id collisions between different
     # patchwork instances
