@@ -206,13 +206,13 @@ class watcher(object):
             elif status == 1:
                 dropped.append(patchset_summary)
             elif status == 127:
-                raise Exception("Filter command %s failed" % cmd)
+                raise Exception("Filter command %s failed" % (cmd))
             elif status < 0:
                 raise Exception("Filter command %s was terminated "
-                                "by signal %d" % cmd, -status)
+                                "by signal %d" % (cmd, -status))
             else:
                 raise Exception("Filter command %s returned "
-                                "invalid status %d" % cmd, status)
+                                "invalid status %d" % (cmd, status))
         return ready, dropped
 
     def check_patchwork(self):
