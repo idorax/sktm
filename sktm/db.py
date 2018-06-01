@@ -130,33 +130,40 @@ class skt_db(object):
 
         return result[0]
 
-    # FIXME Creation and retrieval should be separate
-    def get_sourceid(self, baseurl, projid):
-        """
-        Fetch or create an ID of a patch source corresponding to a Patchwork
-        base URL and a patchwork project ID.
+    def create_sourceid(self, baseurl, project_id):
+        """Create a patchsource record that links a baseurl and project_id.
 
         Args:
-            baseurl:    Patchwork base URL.
-            projid:     Patchwork project ID.
+            baseurl:    Base URL of the Patchwork instance.
+            project_id: Project ID in Patchwork.
 
-        Returns:
-            Located or created integer ID of the patch source.
+        """
+        self.cur.execute('INSERT INTO patchsource(baseurl, project_id) '
+                         'VALUES(?,?)',
+                         (baseurl, project_id))
+        self.conn.commit()
+
+        return self.cur.lastrowid
+
+    def get_sourceid(self, baseurl, project_id):
+        """Fetch a patchsource id that links a baseurl and project_id.
+
+        Args:
+            baseurl:    Base URL of the Patchwork instance.
+            project_id: Project ID in Patchwork.
+
         """
         self.cur.execute('SELECT id FROM patchsource WHERE '
                          'baseurl=? AND '
                          'project_id=?',
-                         (baseurl, projid))
+                         (baseurl, project_id))
 
-        sid = self.cur.fetchone()
-        if sid is not None:
-            return sid[0]
+        result = self.cur.fetchone()
 
-        self.cur.execute('INSERT INTO patchsource(baseurl, project_id) '
-                         'VALUES(?,?)',
-                         (baseurl, projid))
-        self.conn.commit()
-        return self.get_sourceid(baseurl, projid)
+        if not result:
+            return self.create_sourceid(baseurl, project_id)
+
+        return result[0]
 
     def get_last_checked_patch(self, baseurl, projid):
         sourceid = self.get_sourceid(baseurl, projid)
