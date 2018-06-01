@@ -556,15 +556,8 @@ class skt_db(object):
         self.cur.execute('INSERT INTO testrun(result_id, build_id) '
                          'VALUES(?,?)',
                          (result.value, buildid))
-
-        self.cur.execute('SELECT id FROM testrun WHERE result_id=? AND '
-                         'build_id=?',
-                         (result.value, buildid))
-
-        testrunid = self.cur.fetchone()[0]
         self.conn.commit()
-
-        return testrunid
+        return self.cur.lastrowid
 
     def commit_patch(self, patch_id, patch_name, patch_url, series_id,
                      baseurl, project_id, patch_date):
