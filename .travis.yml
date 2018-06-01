@@ -10,6 +10,7 @@ script:
     - find -name '*.py' | xargs -l1 -IFILE python -c 'import imp; imp.load_source("", "FILE")'
     # Check coding style
     - flake8 --show-source .
+    - pylint tests
     - coverage run --source=sktm,tests -m pytest -v -s .
     - coverage report -m --omit="*/tests*"
     - coveralls
