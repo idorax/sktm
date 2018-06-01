@@ -230,9 +230,22 @@ class watcher(object):
         logging.info("stable commit for %s is %s", self.baserepo, stablecommit)
         # For every Patchwork interface
         for cpw in self.pw:
+            patchsets = list()
             # Get patchset summaries for all patches the Patchwork interface
             # hasn't seen yet
-            patchsets, _ = self.filter_patchsets(cpw.get_new_patchsets())
+            new_patchsets = cpw.get_new_patchsets()
+            for patchset in new_patchsets:
+                logging.info("new patchset: %s" %
+                             patchset.get_obj_url_list())
+            ready_patchsets, dropped_patchsets = \
+                self.filter_patchsets(new_patchsets)
+            for patchset in ready_patchsets:
+                logging.info("ready patchset: %s" %
+                             patchset.get_obj_url_list())
+            for patchset in dropped_patchsets:
+                logging.info("dropped patchset: %s" %
+                             patchset.get_obj_url_list())
+            patchsets += ready_patchsets
             # Add patchset summaries for all patches staying pending for
             # longer than 12 hours
             patchsets += cpw.get_patchsets(
