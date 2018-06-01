@@ -99,28 +99,36 @@ class skt_db(object):
         c.close()
         tc.close()
 
-    # FIXME Creation and retrieval should be separate
-    def get_repoid(self, baserepo):
-        """
-        Fetch or create an ID of a baseline Git repo URL.
+    def create_repoid(self, baserepo):
+        """Create a repoid for a git repo URL.
 
         Args:
-            baserepo:   Baseline Git repo URL to get ID for.
+            baserepo:   URL of the git repo.
 
-        Returns:
-            Located or created integer ID of the baseline Git repo.
         """
-        self.cur.execute('SELECT id FROM baserepo WHERE url=?',
-                         (baserepo,))
-
-        brid = self.cur.fetchone()
-        if brid is not None:
-            return brid[0]
-
-        self.cur.execute('INSERT INTO baserepo(url) VALUES(?)',
+        self.cur.execute('INSERT OR IGNORE INTO baserepo(url) VALUES(?)',
                          (baserepo,))
         self.conn.commit()
-        return self.get_repoid(baserepo)
+
+        return self.cur.lastrowid
+
+    def get_repoid(self, baserepo):
+        """Fetch a repoid for a git repo URL.
+
+        Args:
+            baserepo:   URL of the git repo.
+
+        """
+        self.cur.execute(
+            'SELECT id FROM baserepo WHERE url=?',
+            (baserepo,)
+        )
+        result = self.cur.fetchone()
+
+        if not result:
+            return self.create_repoid(baserepo)
+
+        return result[0]
 
     # FIXME Creation and retrieval should be separate
     def get_sourceid(self, baseurl, projid):
