@@ -139,6 +139,37 @@ class PatchsetSummary(object):
         """
         return len(self.patch_list) == 0
 
+    def __get_obj_list(self):
+        """
+        Get a list of summaries of objects representing the patchset.
+
+        Returns:
+            A list of ObjectSummary instances.
+        """
+        obj_list = list()
+        if self.cover_letter:
+            obj_list.append(self.cover_letter)
+        obj_list += self.patch_list
+        return obj_list
+
+    def get_obj_url_list(self):
+        """
+        Get a list of URLs of objects representing the patchset.
+
+        Returns:
+            A list of mbox-based object URLs.
+        """
+        return [obj.url for obj in self.__get_obj_list()]
+
+    def get_obj_mbox_url_list(self):
+        """
+        Get a list of mbox URLs of objects representing the patchset.
+
+        Returns:
+            A list of mbox URLs.
+        """
+        return [obj.get_mbox_url() for obj in self.__get_obj_list()]
+
     def get_patch_info_list(self):
         """
         Get a list of patch ID/date tuples for use with database routines.
