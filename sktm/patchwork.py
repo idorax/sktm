@@ -148,7 +148,7 @@ class PatchsetSummary(object):
             value of the "Date" header of the patches comprising the patchset,
             in the order they should be applied in.
         """
-        return [(patch.id, patch.date) for patch in self.patch_list]
+        return [(patch.patch_id, patch.date) for patch in self.patch_list]
 
     def get_patch_url_list(self):
         """
