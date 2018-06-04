@@ -200,6 +200,7 @@ class watcher(object):
                 argv += patchset_summary.get_patch_mbox_url_list()
                 # TODO Shell-quote
                 cmd = " ".join(argv)
+                logging.info("Executing filter command %s", cmd)
                 # TODO Redirect output to logs
                 status = subprocess.call(argv)
                 if status == 0:
