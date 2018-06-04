@@ -64,7 +64,7 @@ class skt_db(object):
                 CREATE TABLE pendingpatches(
                   id INTEGER PRIMARY KEY,
                   pdate TEXT,
-                  baseurl TEXT,
+                  patchsource_id INTEGER,
                   timestamp INTEGER,
                   FOREIGN KEY(patchsource_id) REFERENCES patchsource(id)
                 );
@@ -286,46 +286,53 @@ class skt_db(object):
         res = self.cur.fetchone()
         return None if res is None else res[0]
 
-    def set_patchset_pending(self, baseurl, patchset):
+    def set_patchset_pending(self, baseurl, projid, patchset):
         """
         Add each specified patch to the list of "pending" patches, with
-        specifed patch date, for specified Patchwork base URL, and marked with
-        current timestamp. Replace any previously added patches with the same
-        ID (bug: should be "same ID and base URL").
+        specifed patch date, for specified Patchwork base URL and project ID,
+        and marked with current timestamp. Replace any previously added
+        patches with the same ID (bug: should be "same ID, project ID and
+        base URL").
 
         Args:
             baseurl:    Base URL of the Patchwork instance the project ID and
                         patch IDs belong to.
+            projid:     ID of the Patchwork project the patch IDs belong to.
             patchset:   List of info tuples for patches to add to the list,
                         where each tuple contains the patch ID and a free-form
                         patch date string.
         """
+        psid = self.get_sourceid(baseurl, projid)
         tstamp = int(time.time())
 
         logging.debug("setting patches as pending: %s", patchset)
 
         self.cur.executemany('INSERT OR REPLACE INTO '
-                             'pendingpatches(id, pdate, baseurl, timestamp) '
+                             'pendingpatches(id, pdate, patchsource_id, '
+                             'timestamp) '
                              'VALUES(?, ?, ?, ?)',
-                             [(pid, pdate, baseurl, tstamp) for
+                             [(pid, pdate, psid, tstamp) for
                               (pid, pdate) in patchset])
         self.conn.commit()
 
-    def unset_patchset_pending(self, baseurl, patchset):
+    def unset_patchset_pending(self, baseurl, projid, patchset):
         """
         Remove each specified patch from the list of "pending" patches, for
-        the specified Patchwork base URL.
+        the specified Patchwork base URL and project ID.
 
         Args:
-            baseurl:    Base URL of the Patchwork instance the patch IDs
-                        belong to.
+            baseurl:    Base URL of the Patchwork instance the project ID and
+                        patch IDs belong to.
+            projid:     ID of the Patchwork project the patch IDs belong to.
             patchset:   List of IDs of patches to be removed from the list.
         """
+        psid = self.get_sourceid(baseurl, projid)
+
         logging.debug("removing patches from pending list: %s", patchset)
 
         self.cur.executemany('DELETE FROM pendingpatches WHERE id = ? '
-                             'AND baseurl = ?',
-                             [(pid, baseurl) for pid in patchset])
+                             'AND patchsource_id = ?',
+                             [(pid, psid) for pid in patchset])
         self.conn.commit()
 
     def update_baseline(self, baserepo, commithash, commitdate,
@@ -373,7 +380,7 @@ class skt_db(object):
         for (pid, pname, purl, baseurl, projid, pdate) in patches:
             # TODO: Can accumulate per-project list instead of doing it one by
             # one
-            self.unset_patchset_pending(baseurl, [pid])
+            self.unset_patchset_pending(baseurl, projid, [pid])
 
         self.cur.execute('INSERT INTO '
                          'patchtest(patch_series_id, baseline_id, testrun_id) '

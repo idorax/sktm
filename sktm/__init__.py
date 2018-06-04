@@ -241,7 +241,7 @@ class watcher(object):
             # For each patchset summary
             for patchset in patchsets:
                 # (Re-)add the patchset's patches to the "pending" list
-                self.db.set_patchset_pending(cpw.baseurl,
+                self.db.set_patchset_pending(cpw.baseurl, cpw.projectid,
                                              patchset.get_patch_info_list())
                 # Submit and remember a Jenkins build for the patchset
                 self.pj.append((sktm.jtype.PATCHWORK,
