@@ -471,7 +471,7 @@ class skt_patchwork2(object):
 
             cover = series.get("cover_letter")
             if cover:
-                match = re.match("^(.*)/mbox$", cover.get("url", ""))
+                match = re.match("^(.*)/mbox/?$", cover.get("mbox", ""))
                 if match:
                     patchset.set_cover_letter(
                         ObjectSummary(match.group(1), cover.get("date")))
