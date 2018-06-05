@@ -772,6 +772,8 @@ class skt_patchwork(object):
             projectname:    Patchwork project name, or None.
             lastpatch:      Maximum processed patch ID to start with.
         """
+        # A list of patch object fields to request from RH fork of Patchwork
+        # Only set if it's a RH fork.
         self.fields = None
         # XML RPC interface to Patchwork
         self.rpc = self.get_rpc(baseurl)
