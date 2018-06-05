@@ -30,17 +30,19 @@ import sktm
 class ObjectSummary(object):
     """A summary of an mbox-based Patchwork object"""
 
-    def __init__(self, url, date=None, patch_id=None):
+    def __init__(self, url, date=None, patch_id=None, mbox_sfx="/mbox"):
         """
         Initialize an object summary.
 
         Args:
             url:        Patchwork object URL. It should be possible to
                         retrieve the object's mbox by fetching from this URL
-                        with "/mbox" appended.
+                        with a suffix appended.
             date:       The mbox "Date" header value, in the
                         "YYYY-MM-DDTHH:MM:SS" format, where "T" is literal.
             patch_id:   ID of a Patchwork patch, for patch objects.
+            mbox_sfx:   The string to add to the object URL to make the object
+                        mbox URL.
         """
         # User-facing Patchwork object URL
         self.url = url
@@ -48,6 +50,8 @@ class ObjectSummary(object):
         self.date = date
         # Patchwork patch ID for patch objects
         self.patch_id = patch_id
+        # Mbox URL suffix
+        self.mbox_sfx = mbox_sfx
 
     def is_patch(self):
         """
@@ -65,7 +69,7 @@ class ObjectSummary(object):
         Returns:
             URL pointing at the object's mbox.
         """
-        return self.url + "/mbox"
+        return self.url + self.mbox_sfx
 
 
 class PatchsetSummary(object):
@@ -943,6 +947,34 @@ class skt_patchwork(object):
 
         return patches
 
+    def __get_mbox_contents(self, patch_id):
+        """
+        Retrieve mbox (mailbox) contents for a patch with the specified ID.
+
+        Args:
+            patch_id: ID of the patch to retrieve mailbox contents of.
+
+        Returns:
+            The mailbox contents string.
+        """
+        if self.fields:
+            return stringify(self.rpc.patch_get_mbox4(patch_id))
+        else:
+            return stringify(self.rpc.patch_get_mbox(patch_id))
+
+    def __get_mbox_url_sfx(self):
+        """
+        Retrieve the string which needs to be added to a patch URL to make an
+        mbox URL.
+
+        Returns:
+            The patch mbox URL suffix.
+        """
+        if self.fields:
+            return "/mbox4"
+        else:
+            return "/mbox"
+
     def get_header_value(self, patch_id, *keys):
         """
         Get the value(s) of requested message headers.
@@ -960,7 +992,7 @@ class skt_patchwork(object):
             A tuple of strings representing the value of requested headers
             from patch.
         """
-        mbox_string = stringify(self.rpc.patch_get_mbox(patch_id))
+        mbox_string = self.__get_mbox_contents(patch_id)
         mbox_email = email.message_from_string(mbox_string)
 
         res = ()
@@ -1145,7 +1177,8 @@ class skt_patchwork(object):
                         result.set_cover_letter(
                             ObjectSummary(self.patchurl(cover),
                                           cover.get("date").replace(" ", "T"),
-                                          cover.get("id")))
+                                          cover.get("id"),
+                                          self.__get_mbox_url_sfx()))
 
                     # For each patch position in series in order
                     for cpatch in sorted(self.series[seriesid].keys()):
@@ -1162,7 +1195,7 @@ class skt_patchwork(object):
                         result.add_patch(
                             ObjectSummary(self.patchurl(patch),
                                           patch.get("date").replace(" ", "T"),
-                                          pid))
+                                          pid, self.__get_mbox_url_sfx()))
 
                     logging.info("message_id: %s", result.message_id)
                     logging.info("subject: %s", result.subject)
@@ -1188,7 +1221,7 @@ class skt_patchwork(object):
             result.add_patch(
                     ObjectSummary(self.patchurl(patch),
                                   patch.get("date").replace(" ", "T"),
-                                  pid))
+                                  pid, self.__get_mbox_url_sfx()))
 
         if pid > self.lastpatch:
             self.lastpatch = pid
