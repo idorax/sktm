@@ -518,7 +518,7 @@ class TestDb(unittest.TestCase):  # pylint: disable=too-many-public-methods
         testdb = skt_db(self.database_file)
         mock_get_sourceid.return_value = 1
 
-        testdb.unset_patchset_pending('baseurl', '1', ['1'])
+        testdb.unset_patchset_pending('baseurl', ['1'])
 
         # Ensure a debug log was written
         mock_log.assert_called_once()
@@ -527,7 +527,7 @@ class TestDb(unittest.TestCase):  # pylint: disable=too-many-public-methods
         execute_call_args = mock_sql.connect().cursor().executemany.\
             call_args[0]
         self.assertIn('DELETE FROM pendingpatches', execute_call_args[0])
-        self.assertEqual([('1', 1)], execute_call_args[1])
+        self.assertEqual([('baseurl', '1')], execute_call_args[1])
 
         # Ensure the data was committed to the database
         mock_sql.connect().commit.assert_called()

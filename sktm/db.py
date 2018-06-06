@@ -36,7 +36,7 @@ class skt_db(object):
         c = tc.cursor()
 
         # FIXME The "patchsource_id" field should be a part of the primary key
-        #       for "pendingpatches" and "patch" tables.
+        #       for "patch" table.
         c.executescript("""
                 PRAGMA foreign_keys = on;
 
@@ -432,26 +432,26 @@ class skt_db(object):
                               (patch_id, patch_date) in patchset])
         self.conn.commit()
 
-    def unset_patchset_pending(self, baseurl, project_id, patchset):
+    def unset_patchset_pending(self, baseurl, patchset):
         """Remove a patch from the list of pending patches.
 
         Remove each specified patch from the list of "pending" patches, for
-        the specified Patchwork base URL and project ID.
+        the specified Patchwork base URL.
 
         Args:
-            baseurl:    Base URL of the Patchwork instance the project ID and
-                        patch IDs belong to.
-            project_id: ID of the Patchwork project the patch IDs belong to.
+            baseurl:    Base URL of the Patchwork instance the patch IDs
+                        belong to.
             patchset:   List of IDs of patches to be removed from the list.
 
         """
-        patchset_id = self.get_sourceid(baseurl, project_id)
-
         logging.debug("removing patches from pending list: %s", patchset)
 
-        self.cur.executemany('DELETE FROM pendingpatches WHERE id = ? '
-                             'AND patchsource_id = ?',
-                             [(patch_id, patchset_id) for
+        self.cur.executemany('DELETE FROM pendingpatches WHERE '
+                             'patchsource_id IN '
+                             '(SELECT DISTINCT id FROM patchsource WHERE '
+                             'baseurl = ?) '
+                             'AND id = ? ',
+                             [(baseurl, patch_id) for
                               patch_id in patchset])
         self.conn.commit()
 
@@ -536,7 +536,7 @@ class skt_db(object):
              patch_date) in patches:
             # TODO: Can accumulate per-project list instead of doing it one by
             # one
-            self.unset_patchset_pending(baseurl, project_id, [patch_id])
+            self.unset_patchset_pending(baseurl, [patch_id])
 
         self.cur.execute('INSERT INTO '
                          'patchtest(patch_series_id, baseline_id, testrun_id) '
