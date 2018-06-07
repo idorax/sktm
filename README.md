@@ -350,6 +350,21 @@ tested patch recorded, and further patches could be tested by executing the
 However, it can be used again to push the last tested patch back, and retest
 already-tested patches, or to push it forward to skip testing some patches.
 
+### Database upgrading
+
+In case database schema changes, new migration scripts will be provided in
+`db_migrations` directory. They aren't needed for new checkouts, but are
+required for sktm to work correctly when upgrading. New scripts since the last
+upgrade should be applied in the correct (numerical) order with commands:
+
+    sqlite3 <db_path> < <script_name>
+
+For example, if the database path is `.sktm.db` and migration `01-pending.sql`
+is being applied, the command will be
+
+    sqlite3 ~/.sktm.db < 01-pending.sql
+
+
 License
 -------
 sktm is distributed under GPLv2 license.
