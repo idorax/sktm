@@ -36,7 +36,7 @@ class TestInit(unittest.TestCase):
             jenkinspassword="password",
             jenkinsjobname="sktm_jenkins_job",
             dbpath=self.database_file,
-            filter=None,
+            patch_filter=None,
             makeopts=None
         )
 

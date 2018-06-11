@@ -12,12 +12,14 @@
 # along with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
-import enum
 import logging
 import os
 import re
 import subprocess
 import time
+
+import enum
+
 import sktm.db
 import sktm.jenkins
 import sktm.patchwork
@@ -42,7 +44,7 @@ class jtype(enum.IntEnum):
 # TODO This is no longer just a watcher. Rename/refactor/describe accordingly.
 class watcher(object):
     def __init__(self, jenkinsurl, jenkinslogin, jenkinspassword,
-                 jenkinsjobname, dbpath, filter, makeopts=None):
+                 jenkinsjobname, dbpath, patch_filter, makeopts=None):
         """
         Initialize a "watcher".
 
@@ -52,7 +54,7 @@ class watcher(object):
             jenkinspassword:    Jenkins user password.
             jenkinsjobname:     Name of the Jenkins job to trigger and watch.
             dbpath:             Path to the job status database file.
-            filter:             The name of a patchset filter program.
+            patch_filter:       The name of a patchset filter program.
                                 The program should accept a list of mbox URLs
                                 as its arguments, pointing to the patches to
                                 apply, and also a "-c/--cover" option,
@@ -73,7 +75,7 @@ class watcher(object):
         # Jenkins project name
         self.jobname = jenkinsjobname
         # Patchset filter program
-        self.filter = filter
+        self.patch_filter = patch_filter
         # Extra arguments to pass to "make"
         self.makeopts = makeopts
         # List of pending Jenkins builds, each one represented by a 3-tuple
@@ -87,6 +89,10 @@ class watcher(object):
         # True if REST-based Patchwork interfaces should be created,
         # False if XML RPC-based Patchwork interfaces should be created
         self.restapi = False
+        # Baseline-related attributes, set by set_baseline() call
+        self.baserepo = None
+        self.baseref = None
+        self.cfgurl = None
 
     def set_baseline(self, repo, ref="master", cfgurl=None):
         """
@@ -114,7 +120,7 @@ class watcher(object):
         self.restapi = restapi
 
     def cleanup(self):
-        for (pjt, bid, cpw) in self.pj:
+        for (pjt, bid, _) in self.pj:
             logging.warning("Quiting before job completion: %d/%d", bid, pjt)
 
     # FIXME Pass patchwork type via arguments, or pass a whole interface
@@ -198,16 +204,16 @@ class watcher(object):
         ready = []
         dropped = []
 
-        if self.filter:
+        if self.patch_filter:
             for patchset_summary in patchset_summary_list:
-                argv = [self.filter]
+                argv = [self.patch_filter]
                 if patchset_summary.cover_letter:
                     argv += ["--cover",
                              patchset_summary.cover_letter.get_mbox_url()]
                 argv += patchset_summary.get_patch_mbox_url_list()
                 # TODO Shell-quote
                 cmd = " ".join(argv)
-                logging.info("Executing filter command %s", cmd)
+                logging.info("Executing patch filter command %s", cmd)
                 # TODO Redirect output to logs
                 status = subprocess.call(argv)
                 if status == 0:
@@ -235,7 +241,7 @@ class watcher(object):
         in the database, more than 12 hours ago.
         """
         stablecommit = self.db.get_stable(self.baserepo)
-        if stablecommit is None:
+        if not stablecommit:
             raise Exception("No known stable baseline for repo %s" %
                             self.baserepo)
 
@@ -247,22 +253,22 @@ class watcher(object):
             # hasn't seen yet
             new_patchsets = cpw.get_new_patchsets()
             for patchset in new_patchsets:
-                logging.info("new patchset: %s" %
-                             patchset.get_obj_url_list())
+                logging.info("new patchset: %s", patchset.get_obj_url_list())
             ready_patchsets, dropped_patchsets = \
                 self.filter_patchsets(new_patchsets)
             for patchset in ready_patchsets:
-                logging.info("ready patchset: %s" %
-                             patchset.get_obj_url_list())
+                logging.info("ready patchset: %s", patchset.get_obj_url_list())
             for patchset in dropped_patchsets:
-                logging.info("dropped patchset: %s" %
+                logging.info("dropped patchset: %s",
                              patchset.get_obj_url_list())
             patchsets += ready_patchsets
             # Add patchset summaries for all patches staying pending for
             # longer than 12 hours
             patchsets += cpw.get_patchsets(
-                    self.db.get_expired_pending_patches(cpw.baseurl,
-                                                        cpw.project_id, 43200))
+                self.db.get_expired_pending_patches(cpw.baseurl,
+                                                    cpw.project_id,
+                                                    43200)
+            )
             # For each patchset summary
             for patchset in patchsets:
                 # (Re-)add the patchset's patches to the "pending" list
@@ -357,7 +363,7 @@ class watcher(object):
 
     def wait_for_pending(self):
         self.check_pending()
-        while len(self.pj) > 0:
+        while self.pj:
             logging.debug("waiting for jobs to complete. %d remaining",
                           len(self.pj))
             time.sleep(60)
