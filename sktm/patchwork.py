@@ -292,6 +292,9 @@ class PatchworkProject(object):
         patterns_to_skip = SKIP_PATTERNS + skip
         logging.debug('Patch subject patterns to skip: %s', patterns_to_skip)
         self.skip = re.compile('|'.join(patterns_to_skip), re.IGNORECASE)
+        # Initialize RH-instance marker so we can check the attribute in common
+        # code
+        self.fields = None
 
     def get_patch_message(self, patch_id, suffix='mbox'):
         """
@@ -325,6 +328,39 @@ class PatchworkProject(object):
                             (mbox_url, response.status_code))
 
         return email.message_from_string(response.content)
+
+    def get_header_value(self, patch_id, *keys):
+        """
+        Get the value(s) of requested message headers.
+
+        In case multiple headers with the same key are present (this is
+        relevant for eg. 'Received' header), concatenating the values with
+        double newlines as a divider (we shouldn't need headers which can be
+        present multiple times anyways).
+
+        Args:
+            patch_id: ID of the patch to retrieve header value for.
+            keys:     Keys of the headers which value should be retrieved.
+
+        Returns:
+            A tuple of strings representing the value of requested headers
+            from patch.
+        """
+        if self.fields:
+            mbox_email = self.get_patch_message(patch_id, 'mbox4')
+        else:
+            mbox_email = self.get_patch_message(patch_id)
+
+        res = ()
+
+        for key in keys:
+            value = mbox_email.get_all(key, [''])
+            if len(value) == 1:
+                res += (value[0],)
+            else:
+                res += ('\n\n'.join([val for val in value]),)
+
+        return res
 
 
 class skt_patchwork2(PatchworkProject):
@@ -403,49 +439,6 @@ class skt_patchwork2(PatchworkProject):
             raise Exception("Can't get apiurls: %d" % r.status_code)
 
         return r.json()
-
-    def get_header_value(self, patch_id, *keys):
-        """
-        Get the value(s) of requested message headers.
-
-        Since Patchwork 2.1, all the headers with same key are returned in the
-        API as a list (this is relevant for eg. 'Received' header which can be
-        present multiple times; before, only one of them was present). Work
-        around this difference by concatenating the values with double newlines
-        as a divider (we shouldn't need headers which can be present multiple
-        times anyways).
-
-        Args:
-            patch_id: ID of the patch to retrieve header value for.
-            keys:     Keys of the headers which values should be retrieved.
-
-        Returns:
-            A tuple of strings representing the values of requested headers
-            from patch.
-        """
-        req = requests.get('%s/%s' % (self.apiurls.get('patches'), patch_id))
-
-        if req.status_code != 200:
-            raise Exception('Failed to get data for patch %d (%d)' %
-                            (patch_id, req.status_code))
-
-        res = ()
-        headers = {}
-        # Make sure we handle case difference until we switch to mbox parsing
-        for key, value in req.json().get('headers', {}).items():
-            headers[key.lower()] = value
-
-        for key in keys:
-            value = headers.get(key.lower(), '')
-            # We need to handle strings and unicode.
-            # NOTE: basestring doesn't exist in PY3 but since the retrieval
-            # will be reworked before we get compatible it shouldn't matter
-            if isinstance(value, basestring):
-                res += (value,)
-            else:
-                res += ('\n\n'.join([val for val in value]),)
-
-        return res
 
     def get_emails(self, pid):
         """
@@ -994,39 +987,6 @@ class skt_patchwork(PatchworkProject):
             return "/mbox4"
         else:
             return "/mbox"
-
-    def get_header_value(self, patch_id, *keys):
-        """
-        Get the value(s) of requested message headers.
-
-        In case multiple headers with the same key are present (this is
-        relevant for eg. 'Received' header), concatenating the values with
-        double newlines as a divider (we shouldn't need headers which can be
-        present multiple times anyways).
-
-        Args:
-            patch_id: ID of the patch to retrieve header value for.
-            keys:     Keys of the headers which value should be retrieved.
-
-        Returns:
-            A tuple of strings representing the value of requested headers
-            from patch.
-        """
-        if self.fields:
-            mbox_email = self.get_patch_message(patch_id, suffix='mbox4')
-        else:
-            mbox_email = self.get_patch_message(patch_id)
-
-        res = ()
-
-        for key in keys:
-            value = mbox_email.get_all(key, [''])
-            if len(value) == 1:
-                res += (value[0],)
-            else:
-                res += ('\n\n'.join([val for val in value]),)
-
-        return res
 
     def get_emails(self, pid):
         """
