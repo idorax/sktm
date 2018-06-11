@@ -668,7 +668,7 @@ class skt_patchwork2(PatchworkProject):
 
         return r.json()
 
-    def get_patchsets_by_patch(self, url, db=None, seen=set()):
+    def get_patchsets_by_patch(self, url, seen=set()):
         """
         Retrieve a list of summaries of patchsets, which weren't already
         "seen", and which contain the patch or patches available at the
@@ -677,8 +677,6 @@ class skt_patchwork2(PatchworkProject):
         Args:
             url:    The URL pointing to a patch or a patch list to retrieve
                     the list of patch series from.
-            db:     The optional database interface to retrieve "tested"
-                    status for the patch series from.
             seen:   A set of IDs of patch series which should be ignored, and
                     which should have patch series IDs added once they're
                     processed.
@@ -707,10 +705,6 @@ class skt_patchwork2(PatchworkProject):
                 sid = series.get("id")
                 if (sid in seen):
                     continue
-                elif db and db.get_series_result(sid):
-                    logging.info("skipping already tested series: [%d] %s",
-                                 sid, series.get("name"))
-                    continue
                 else:
                     patchsets += self.get_series_from_url("%s/%d" % (
                         self.apiurls.get("series"),
@@ -724,7 +718,7 @@ class skt_patchwork2(PatchworkProject):
             if m:
                 nurl = m.group(1)
                 # TODO Limit recursion
-                patchsets += self.get_patchsets_by_patch(nurl, db, seen)
+                patchsets += self.get_patchsets_by_patch(nurl, seen)
 
         return patchsets
 
