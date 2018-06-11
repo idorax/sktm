@@ -362,6 +362,31 @@ class PatchworkProject(object):
 
         return res
 
+    def get_emails(self, pid):
+        """
+        Get all involved e-mail addresses from patch message headers.
+
+        Args:
+            pid:    ID of the patch to get header values for.
+
+        Returns:
+            A set of e-mail addresses involved with the patch.
+        """
+        emails = set()
+
+        logging.debug("getting emails for patch %d from 'from', 'to', 'cc'")
+        header_values = self.get_header_value(pid, "From", "To", "Cc")
+        for header_value in header_values:
+            for faddr in [x.strip() for x in header_value.split(",") if x]:
+                logging.debug("patch=%d; email=%s", pid, faddr)
+                maddr = re.search(r"\<([^\>]+)\>", faddr)
+                if maddr:
+                    emails.add(maddr.group(1))
+                else:
+                    emails.add(faddr)
+
+        return emails
+
 
 class skt_patchwork2(PatchworkProject):
     """
@@ -439,31 +464,6 @@ class skt_patchwork2(PatchworkProject):
             raise Exception("Can't get apiurls: %d" % r.status_code)
 
         return r.json()
-
-    def get_emails(self, pid):
-        """
-        Get all involved e-mail addresses from patch message headers.
-
-        Args:
-            pid:    ID of the patch to get emails for.
-
-        Returns:
-            A set of e-mail addresses involved with the patch.
-        """
-        emails = set()
-
-        logging.debug("getting emails for patch %d from 'from', 'to', 'cc'")
-        header_values = self.get_header_value(pid, "from", "to", "cc")
-        for header_value in header_values:
-            for faddr in [x.strip() for x in header_value.split(",") if x]:
-                logging.debug("patch=%d; email=%s", pid, faddr)
-                maddr = re.search(r"\<([^\>]+)\>", faddr)
-                if maddr:
-                    emails.add(maddr.group(1))
-                else:
-                    emails.add(faddr)
-
-        return emails
 
     def get_series_from_url(self, url):
         """
@@ -987,31 +987,6 @@ class skt_patchwork(PatchworkProject):
             return "/mbox4"
         else:
             return "/mbox"
-
-    def get_emails(self, pid):
-        """
-        Get all involved e-mail addresses from patch message headers.
-
-        Args:
-            pid:    ID of the patch to get header values for.
-
-        Returns:
-            A set of e-mail addresses involved with the patch.
-        """
-        emails = set()
-
-        logging.debug("getting emails for patch %d from 'from', 'to', 'cc'")
-        header_values = self.get_header_value(pid, "From", "To", "Cc")
-        for header_value in header_values:
-            for faddr in [x.strip() for x in header_value.split(",") if x]:
-                logging.debug("patch=%d; email=%s", pid, faddr)
-                maddr = re.search(r"\<([^\>]+)\>", faddr)
-                if maddr:
-                    emails.add(maddr.group(1))
-                else:
-                    emails.add(faddr)
-
-        return emails
 
     def set_patch_check(self, pid, jurl, result):
         """
