@@ -384,6 +384,21 @@ class PatchworkProject(object):
 
         return emails
 
+    def get_patch_url(self, patch):
+        """
+        Build a Patchwork URL for passed patch object.
+
+        Args:
+            patch: Patch object, either Patchwork2's JSON object or
+                   Patchwork1's XMLRPC object.
+
+        Returns:
+            Patch URL.
+        """
+        # Use os.path for manipulation with URL because urlparse can't deal
+        # with URLs ending both with and without slash.
+        return os.path.join(self.baseurl, 'patch', str(patch.get('id')))
+
 
 class skt_patchwork2(PatchworkProject):
     """
@@ -417,19 +432,6 @@ class skt_patchwork2(PatchworkProject):
     @property
     def newsince(self):
         return self.nsince.isoformat() if self.nsince else None
-
-    # FIXME Rename to use a verb
-    def patchurl(self, patch):
-        """
-        Retrieve a patch URL from a JSON patch object.
-
-        Args:
-            patch:  The JSON patch object to get URL from.
-
-        Returns:
-            URL of the patch.
-        """
-        return "%s/patch/%d" % (self.baseurl, patch.get("id"))
 
     def get_project_id(self, project_name):
         """
@@ -530,7 +532,7 @@ class skt_patchwork2(PatchworkProject):
                 patchset.set_subject(subject)
                 patchset.merge_email_addr_set(emails)
                 patchset.add_patch(
-                    ObjectSummary(self.patchurl(patch),
+                    ObjectSummary(self.get_patch_url(patch),
                                   patch.get("date"), patch.get("id")))
             logging.info("---")
 
@@ -869,19 +871,6 @@ class skt_patchwork(PatchworkProject):
 
         return rpc
 
-    # FIXME Use a verb in the name
-    def patchurl(self, patch):
-        """
-        Format a URL for a patch object.
-
-        Args:
-            patch:  Patch object as returned by get_patch_by_id().
-
-        Returns:
-            Patch URL.
-        """
-        return "%s/patch/%d" % (self.baseurl, patch.get("id"))
-
     def log_patch(self, id, name, message_id, emails):
         """
         Log patch ID, name, Message-ID, and e-mails.
@@ -1129,7 +1118,7 @@ class skt_patchwork(PatchworkProject):
                     cover = self.covers.get(seriesid)
                     if cover:
                         result.set_cover_letter(
-                            ObjectSummary(self.patchurl(cover),
+                            ObjectSummary(self.get_patch_url(cover),
                                           cover.get("date").replace(" ", "T"),
                                           cover.get("id"),
                                           self.__get_mbox_url_sfx()))
@@ -1147,7 +1136,7 @@ class skt_patchwork(PatchworkProject):
                         result.set_subject(subject)
                         result.merge_email_addr_set(emails)
                         result.add_patch(
-                            ObjectSummary(self.patchurl(patch),
+                            ObjectSummary(self.get_patch_url(patch),
                                           patch.get("date").replace(" ", "T"),
                                           pid, self.__get_mbox_url_sfx()))
 
@@ -1173,7 +1162,7 @@ class skt_patchwork(PatchworkProject):
             result.set_subject(subject)
             result.merge_email_addr_set(emails)
             result.add_patch(
-                    ObjectSummary(self.patchurl(patch),
+                    ObjectSummary(self.get_patch_url(patch),
                                   patch.get("date").replace(" ", "T"),
                                   pid, self.__get_mbox_url_sfx()))
 
