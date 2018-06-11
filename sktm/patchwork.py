@@ -428,11 +428,6 @@ class skt_patchwork2(PatchworkProject):
         self.apiurls = self.get_apiurls(baseurl)
         super(skt_patchwork2, self).__init__(baseurl, projectname, skip)
 
-    # TODO Convert this to a simple function
-    @property
-    def newsince(self):
-        return self.nsince.isoformat() if self.nsince else None
-
     def get_project_id(self, project_name):
         """
         Retrieve project ID based on project's name.
@@ -828,11 +823,6 @@ class skt_patchwork(PatchworkProject):
         # "series IDs", the same ones used in "series' above.
         self.covers = dict()
         super(skt_patchwork, self).__init__(baseurl, projectname, skip)
-
-    # TODO Convert this to a simple function
-    @property
-    def newsince(self):
-        return None
 
     # FIXME Just move this into __init__
     def get_rpc(self, baseurl):
