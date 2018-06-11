@@ -14,17 +14,19 @@
 
 from __future__ import print_function
 import datetime
-import dateutil.parser
 import email
 import email.header
-import enum
 import json
 import logging
 import os.path
-import requests
 import re
 import urllib
 import xmlrpclib
+
+import dateutil.parser
+import enum
+import requests
+
 import sktm
 
 
@@ -321,7 +323,7 @@ class PatchworkProject(object):
         try:
             response = requests.get(mbox_url)
         except requests.exceptions.RequestException as exc:
-            raise(exc)
+            raise exc
 
         if response.status_code != requests.codes.ok:
             raise Exception('Failed to retrieve patch from %s, returned %d' %
@@ -478,8 +480,8 @@ class skt_patchwork2(PatchworkProject):
         r = requests.get(url)
 
         if r.status_code != 200:
-            raise Exception("Can't get series from url %s (%d)" % (url,
-                            r.status_code))
+            raise Exception("Can't get series from url %s (%d)" %
+                            (url, r.status_code))
 
         sdata = r.json()
         # If there is a single series returned we get a dict, not a list with
@@ -575,8 +577,8 @@ class skt_patchwork2(PatchworkProject):
         r = requests.get(url)
 
         if r.status_code != 200:
-            raise Exception("Can't get events from url %s (%d)" % (url,
-                            r.status_code))
+            raise Exception("Can't get events from url %s (%d)" %
+                            (url, r.status_code))
 
         edata = r.json()
         # If there is a single event returned we get a dict, not a list with
@@ -671,8 +673,8 @@ class skt_patchwork2(PatchworkProject):
         r = requests.get("%s/%d" % (self.apiurls.get("patches"), pid))
 
         if r.status_code != 200:
-            raise Exception("Can't get patch by id %d (%d)" % (pid,
-                            r.status_code))
+            raise Exception("Can't get patch by id %d (%d)" %
+                            (pid, r.status_code))
 
         return r.json()
 
@@ -698,8 +700,8 @@ class skt_patchwork2(PatchworkProject):
         r = requests.get(url)
 
         if r.status_code != 200:
-            raise Exception("Can't get series from url %s (%d)" % (url,
-                            r.status_code))
+            raise Exception("Can't get series from url %s (%d)" %
+                            (url, r.status_code))
 
         pdata = r.json()
         # If there is a single patch returned we get a dict, not a list with
@@ -711,7 +713,7 @@ class skt_patchwork2(PatchworkProject):
             # For each patch series the patch belongs to
             for series in patch.get("series"):
                 sid = series.get("id")
-                if (sid in seen):
+                if sid in seen:
                     continue
                 else:
                     patchsets += self.get_series_from_url("%s/%d" % (
@@ -1140,9 +1142,11 @@ class skt_patchwork(PatchworkProject):
             result.set_subject(subject)
             result.merge_email_addr_set(emails)
             result.add_patch(
-                    ObjectSummary(self.get_patch_url(patch),
-                                  patch.get("date").replace(" ", "T"),
-                                  pid, self.__get_mbox_url_sfx()))
+                ObjectSummary(self.get_patch_url(patch),
+                              patch.get("date").replace(" ", "T"),
+                              pid,
+                              self.__get_mbox_url_sfx())
+            )
 
         if pid > self.lastpatch:
             self.lastpatch = pid
