@@ -20,6 +20,7 @@ import email.header
 import enum
 import json
 import logging
+import os.path
 import requests
 import re
 import urllib
@@ -291,6 +292,39 @@ class PatchworkProject(object):
         patterns_to_skip = SKIP_PATTERNS + skip
         logging.debug('Patch subject patterns to skip: %s', patterns_to_skip)
         self.skip = re.compile('|'.join(patterns_to_skip), re.IGNORECASE)
+
+    def get_patch_message(self, patch_id, suffix='mbox'):
+        """
+        Retrieve patch's mbox as email object.
+
+        Args:
+            patch_id: The ID of the patch which mbox should be retrieved.
+            suffix:   URL suffix under which the mbox file is available. The
+                      distinction is needed by older RH-internal instance which
+                      exposes original mbox via /mbox4
+
+        Returns:
+            Email object created from the mbox file.
+
+        Raises:
+            requests.exceptions.RequestException (and subexceptions) in case
+            of requests exceptions, Exception in case of unexpected return code
+            (eg. nonexistent patch).
+        """
+        # Use os.path for manipulation with URL because urlparse can't deal
+        # with URLs ending both with and without slash.
+        mbox_url = os.path.join(self.baseurl, patch_id, suffix)
+
+        try:
+            response = requests.get(mbox_url)
+        except requests.exceptions.RequestException as exc:
+            raise(exc)
+
+        if response.status_code != requests.codes.ok:
+            raise Exception('Failed to retrieve patch from %s, returned %d' %
+                            (mbox_url, response.status_code))
+
+        return email.message_from_string(response.content)
 
 
 class skt_patchwork2(PatchworkProject):
@@ -948,21 +982,6 @@ class skt_patchwork(PatchworkProject):
 
         return patches
 
-    def __get_mbox_contents(self, patch_id):
-        """
-        Retrieve mbox (mailbox) contents for a patch with the specified ID.
-
-        Args:
-            patch_id: ID of the patch to retrieve mailbox contents of.
-
-        Returns:
-            The mailbox contents string.
-        """
-        if self.fields:
-            return stringify(self.rpc.patch_get_mbox4(patch_id))
-        else:
-            return stringify(self.rpc.patch_get_mbox(patch_id))
-
     def __get_mbox_url_sfx(self):
         """
         Retrieve the string which needs to be added to a patch URL to make an
@@ -993,8 +1012,10 @@ class skt_patchwork(PatchworkProject):
             A tuple of strings representing the value of requested headers
             from patch.
         """
-        mbox_string = self.__get_mbox_contents(patch_id)
-        mbox_email = email.message_from_string(mbox_string)
+        if self.fields:
+            mbox_email = self.get_patch_message(patch_id, suffix='mbox4')
+        else:
+            mbox_email = self.get_patch_message(patch_id)
 
         res = ()
 
