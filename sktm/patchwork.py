@@ -373,17 +373,14 @@ class PatchworkProject(object):
             A set of e-mail addresses involved with the patch.
         """
         emails = set()
+        pattern = re.compile(r'\<([^\>]+)\>')
 
         logging.debug("getting emails for patch %d from 'from', 'to', 'cc'")
         header_values = self.get_header_value(pid, "From", "To", "Cc")
         for header_value in header_values:
-            for faddr in [x.strip() for x in header_value.split(",") if x]:
-                logging.debug("patch=%d; email=%s", pid, faddr)
-                maddr = re.search(r"\<([^\>]+)\>", faddr)
-                if maddr:
-                    emails.add(maddr.group(1))
-                else:
-                    emails.add(faddr)
+            for address in pattern.findall(header_value):
+                emails.add(address)
+                logging.debug("patch=%d; email=%s", pid, address)
 
         return emails
 
