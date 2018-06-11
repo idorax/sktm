@@ -988,18 +988,6 @@ class skt_patchwork(PatchworkProject):
         # TODO: Implement this for xmlrpc
         pass
 
-    def dump_patch(self, pid):
-        """
-        Output the specified patch information to stdout.
-
-        Args:
-            pid:    The ID of the patch to dump.
-        """
-        patch = self.get_patch_by_id(pid)
-        print("pinfo=", patch, sep='')
-        print("message_id=", self.get_header_value(pid, 'Message-ID'), sep='')
-        print("email=", self.get_emails(pid), sep='')
-
     # TODO Move this to __init__ or make it a class method
     def get_project_id(self, projectname):
         """
