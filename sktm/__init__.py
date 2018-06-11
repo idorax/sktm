@@ -139,9 +139,9 @@ class watcher(object):
             # FIXME Figure out the last patch first, then create the interface
             if lpatch is None:
                 lcdate = self.db.get_last_checked_patch_date(baseurl,
-                                                             pw.projectid)
+                                                             pw.project_id)
                 lpdate = self.db.get_last_pending_patch_date(baseurl,
-                                                             pw.projectid)
+                                                             pw.project_id)
                 since = max(lcdate, lpdate)
                 if since is None:
                     raise Exception("%s project: %s was never tested before, "
@@ -154,8 +154,10 @@ class watcher(object):
 
             # FIXME Figure out the last patch first, then create the interface
             if lpatch is None:
-                lcpatch = self.db.get_last_checked_patch(baseurl, pw.projectid)
-                lppatch = self.db.get_last_pending_patch(baseurl, pw.projectid)
+                lcpatch = self.db.get_last_checked_patch(baseurl,
+                                                         pw.project_id)
+                lppatch = self.db.get_last_pending_patch(baseurl,
+                                                         pw.project_id)
                 lpatch = max(lcpatch, lppatch)
                 if lpatch is None:
                     raise Exception("%s project: %s was never tested before, "
@@ -255,11 +257,11 @@ class watcher(object):
             # longer than 12 hours
             patchsets += cpw.get_patchsets(
                     self.db.get_expired_pending_patches(cpw.baseurl,
-                                                        cpw.projectid, 43200))
+                                                        cpw.project_id, 43200))
             # For each patchset summary
             for patchset in patchsets:
                 # (Re-)add the patchset's patches to the "pending" list
-                self.db.set_patchset_pending(cpw.baseurl, cpw.projectid,
+                self.db.set_patchset_pending(cpw.baseurl, cpw.project_id,
                                              patchset.get_patch_info_list())
                 # Submit and remember a Jenkins build for the patchset
                 self.pj.append((sktm.jtype.PATCHWORK,

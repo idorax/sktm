@@ -275,7 +275,21 @@ class pwresult(enum.IntEnum):
     FAILURE = 3
 
 
-class skt_patchwork2(object):
+class PatchworkProject(object):
+    """Common code for all major versions and interfaces."""
+    def __init__(self, baseurl, project_name):
+        """
+        Initialize attributes common for all Patchworks.
+
+        Args:
+            baseurl:      URL of the Patchwork instance.
+            project_name: Project's `linkname` in Patchwork.
+        """
+        self.baseurl = baseurl
+        self.project_id = self.get_project_id(project_name)
+
+
+class skt_patchwork2(PatchworkProject):
     """
     A Patchwork REST interface
     """
@@ -291,8 +305,6 @@ class skt_patchwork2(object):
                             this or earlier timestamp will be ignored.
             apikey:         Patchwork API authentication token.
         """
-        # Base Patchwork URL
-        self.baseurl = baseurl
         # Last processed patch timestamp in a dateutil.parser.parse format
         self.since = since
         # TODO Describe
@@ -300,20 +312,10 @@ class skt_patchwork2(object):
         # Patchwork API authentication token.
         self.apikey = apikey
         # JSON representation of API URLs retrieved from the Patchwork server
-        self.apiurls = self.get_apiurls()
+        self.apiurls = self.get_apiurls(baseurl)
         # A regular expression matching names of the patches to skip
         self.skp = re.compile("%s" % "|".join(SKIP_PATTERNS), re.IGNORECASE)
-        # JSON representation of the specified project (if any), retrieved
-        # from the Patchwork server
-        self.project = None
-
-        if projectname is not None:
-            self.project = self.get_project(projectname)
-
-    # TODO Convert this to a simple function
-    @property
-    def projectid(self):
-        return int(self.project.get("id"))
+        super(skt_patchwork2, self).__init__(baseurl, projectname)
 
     # TODO Convert this to a simple function
     @property
@@ -333,24 +335,24 @@ class skt_patchwork2(object):
         """
         return "%s/patch/%d" % (self.baseurl, patch.get("id"))
 
-    def get_project(self, pname):
+    def get_project_id(self, project_name):
         """
-        Retrieve JSON representation of the specified project from the
-        Patchwork server.
+        Retrieve project ID based on project's name.
 
         Args:
-            pname:  The name of the project to retrieve.
+            project_name:  The name of the project to retrieve.
 
         Returns:
-            The JSON representation of the specified project.
+            Integer representing project's ID.
         """
-        r = requests.get("%s/%s" % (self.apiurls.get("projects"), pname))
-        if r.status_code != 200:
-            raise Exception("Can't get project data: %s %d" % (pname,
-                            r.status_code))
-        return r.json()
+        req = requests.get("%s/%s" % (self.apiurls.get("projects"),
+                                      project_name))
+        if req.status_code != requests.codes.ok:
+            raise Exception("Can't get project data: %s %d" %
+                            (project_name, req.status_code))
+        return req.json().get('id')
 
-    def get_apiurls(self):
+    def get_apiurls(self, baseurl):
         """
         Retrieve JSON representation of the list of API URLs supported by the
         Patchwork server.
@@ -358,7 +360,7 @@ class skt_patchwork2(object):
         Returns:
             The JSON representation of the API URLs.
         """
-        r = requests.get("%s/api" % self.baseurl)
+        r = requests.get("%s/api" % baseurl)
         if r.status_code != 200:
             raise Exception("Can't get apiurls: %d" % r.status_code)
 
@@ -723,7 +725,7 @@ class skt_patchwork2(object):
         logging.debug("get_new_patchsets since %s", nsince.isoformat())
         patchsets = self.get_patchsets_by_patch("%s?project=%d&since=%s" %
                                                 (self.apiurls.get("patches"),
-                                                 self.projectid,
+                                                 self.project_id,
                                                  urllib.quote(
                                                      nsince.isoformat()
                                                  )))
@@ -763,7 +765,7 @@ class skt_patchwork2(object):
         return patchsets
 
 
-class skt_patchwork(object):
+class skt_patchwork(PatchworkProject):
     """
     A Patchwork XML RPC interface
     """
@@ -781,12 +783,6 @@ class skt_patchwork(object):
         self.fields = None
         # XML RPC interface to Patchwork
         self.rpc = self.get_rpc(baseurl)
-        # Base Patchwork URL
-        self.baseurl = baseurl
-        # ID of the project, if project name is supplied, otherwise None
-        self.projectid = self.get_projectid(
-            projectname
-        ) if projectname else None
         # Maximum processed patch ID
         self.lastpatch = lastpatch
         # A regular expression matching names of the patches to skip
@@ -801,6 +797,7 @@ class skt_patchwork(object):
         # A dictionary of series cover letter patch objects identified by
         # "series IDs", the same ones used in "series' above.
         self.covers = dict()
+        super(skt_patchwork, self).__init__(baseurl, projectname)
 
     # TODO Convert this to a simple function
     @property
@@ -1058,7 +1055,7 @@ class skt_patchwork(object):
         print("email=", self.get_emails(pid), sep='')
 
     # TODO Move this to __init__ or make it a class method
-    def get_projectid(self, projectname):
+    def get_project_id(self, projectname):
         """
         Retrieve ID of the project with the specified name.
 
@@ -1240,7 +1237,7 @@ class skt_patchwork(object):
         patchsets = list()
 
         logging.debug("get_new_patchsets: %d", self.lastpatch)
-        for patch in self.get_patch_list({'project_id': self.projectid,
+        for patch in self.get_patch_list({'project_id': self.project_id,
                                           'id__gt': self.lastpatch}):
             pset = self.parse_patch(patch)
             if pset:
