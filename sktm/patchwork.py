@@ -656,8 +656,9 @@ class skt_patchwork2(PatchworkProject):
             pid:    ID of the patch to retrieve.
 
         Returns:
-            Parsed JSON object as described in
-            https://patchwork-freedesktop.readthedocs.io/en/latest/rest.html#patches
+            Parsed JSON object representing the patch and its attributes. The
+            set of supported attributes depends on which API versions are
+            supported by a specific Patchwork instance.
         """
         r = requests.get("%s/%d" % (self.apiurls.get("patches"), pid))
 
@@ -734,15 +735,10 @@ class skt_patchwork2(PatchworkProject):
         Returns:
             A list of patchset summaries.
         """
-        # TODO Figure out if adding a second is right here, since the API doc
-        # at https://patchwork-freedesktop.readthedocs.io/en/latest/rest.html
-        # says regarding "since" query parameter:
-        #
-        #   Retrieve only events newer than a specific time. Format is the
-        #   same as event_time in response, an ISO 8601 date. That means that
-        #   the event_time from the last seen event can be used in the next
-        #   query with a since parameter to only retrieve events that haven't
-        #   been seen yet.
+        # Timestamp filtering for 'since' parameter uses '>=' operation so by
+        # using unmodified time, we'd get the last patchset from previous run
+        # again. Add a second to it in order to avoid re-running tests for this
+        # last seen patchset.
         nsince = dateutil.parser.parse(
             self.since
         ) + datetime.timedelta(seconds=1)
