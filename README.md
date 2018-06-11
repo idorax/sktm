@@ -303,23 +303,30 @@ For Patchwork v1 run:
     ./sktm.py -v --jjname <JENKINS_PROJECT> patchwork \
               <GIT_REPO_URL> \
               <PATCHWORK_BASE_URL> <PATCHWORK_PROJECT> \
-              --lastpatch <PATCHWORK_PATCH_ID>
+              --lastpatch <PATCHWORK_PATCH_ID> \
+              --skip <PATTERN> [... <PATTERN>]
 
 and for Patchwork v2 run:
 
     ./sktm.py -v --jjname <JENKINS_PROJECT> patchwork \
               <GIT_REPO_URL> \
               --restapi <PATCHWORK_BASE_URL> <PATCHWORK_PROJECT> \
-              --lastpatch <PATCHWORK_TIMESTAMP>
+              --lastpatch <PATCHWORK_TIMESTAMP> \
+              --skip <PATTERN> [... <PATTERN>]
 
 Here, `<PATCHWORK_BASE_URL>` would be the base URL of the Patchwork instance,
 `<PATCHWORK_PROJECT>` - the name of the Patchwork project to check for new
 patches. The `<PATCHWORK_PATCH_ID>` would be the ID of the newest patch (as
 seen in Patchwork URLs) to ignore. All patches with greater IDs will be
-considered for testing. Finally, `<PATCHWORK_TIMESTAMP>` would be a Patchwork
-instance timestamp of the newest patch to ignore, in a format acceptable by
-Python's `dateutil.parser` module, e.g. from the `Date:` header of a patch
-message. All patches with greater timestamps will be considered for testing.
+considered for testing. `<PATCHWORK_TIMESTAMP>` would be a Patchwork instance
+timestamp of the newest patch to ignore, in a format acceptable by Python's
+`dateutil.parser` module, e.g. from the `Date:` header of a patch message. All
+patches with greater timestamps will be considered for testing. Finally, a list
+of regex `<PATTERN>`s (case insensitive) can be provided to skip testing of
+patches which match the patterns. This last option is useful for example if the
+Patchwork project contains patches for additional tools besides kernel ones.
+By default, git pull requests and tools from netdev list (`iproute`, `ethtool`
+etc.) are skipped.
 
 E.g. this command would test all patches after the one with ID 10363835, from
 the "scsi" tree's Patchwork v1 instance, applying them onto the latest

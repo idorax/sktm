@@ -118,7 +118,7 @@ class watcher(object):
             logging.warning("Quiting before job completion: %d/%d", bid, pjt)
 
     # FIXME Pass patchwork type via arguments, or pass a whole interface
-    def add_pw(self, baseurl, pname, lpatch=None, apikey=None):
+    def add_pw(self, baseurl, pname, lpatch=None, apikey=None, skip=[]):
         """
         Add a Patchwork interface with specified parameters.
         Add an XML RPC-based interface, if self.restapi is false,
@@ -132,9 +132,13 @@ class watcher(object):
                             REST-based interface. Can be omitted to
                             retrieve one from the database.
             apikey:         Patchwork REST API authentication token.
+            skip:           List of additional regex patterns to skip in patch
+                            names, case insensitive.
         """
         if self.restapi:
-            pw = sktm.patchwork.skt_patchwork2(baseurl, pname, lpatch, apikey)
+            pw = sktm.patchwork.skt_patchwork2(
+                baseurl, pname, lpatch, apikey, skip
+            )
 
             # FIXME Figure out the last patch first, then create the interface
             if lpatch is None:
@@ -149,8 +153,9 @@ class watcher(object):
                                     (baseurl, pname))
                 pw.since = since
         else:
-            pw = sktm.patchwork.skt_patchwork(baseurl, pname,
-                                              int(lpatch) if lpatch else None)
+            pw = sktm.patchwork.skt_patchwork(
+                baseurl, pname, int(lpatch) if lpatch else None, skip
+            )
 
             # FIXME Figure out the last patch first, then create the interface
             if lpatch is None:

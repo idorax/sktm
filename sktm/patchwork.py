@@ -27,6 +27,16 @@ import xmlrpclib
 import sktm
 
 
+SKIP_PATTERNS = [
+    r"\[[^\]]*iproute.*?\]",
+    r"\[[^\]]*pktgen.*?\]",
+    r"\[[^\]]*ethtool.*?\]",
+    r"\[[^\]]*git.*?\]",
+    r"\[[^\]]*pull.*?\]",
+    r"pull.?request"
+]
+
+
 class ObjectSummary(object):
     """A summary of an mbox-based Patchwork object"""
 
@@ -205,18 +215,7 @@ class PatchsetSummary(object):
         """
         return [patch.get_mbox_url() for patch in self.patch_list]
 
-
 # TODO Move common code to a common parent class
-
-# TODO Supply this on Patchwork instance creation instead
-SKIP_PATTERNS = [
-    r"\[[^\]]*iproute.*?\]",
-    r"\[[^\]]*pktgen.*?\]",
-    r"\[[^\]]*ethtool.*?\]",
-    r"\[[^\]]*git.*?\]",
-    r"\[[^\]]*pull.*?\]",
-    r"pull.?request"
-]
 
 
 def stringify(v):
@@ -277,23 +276,28 @@ class pwresult(enum.IntEnum):
 
 class PatchworkProject(object):
     """Common code for all major versions and interfaces."""
-    def __init__(self, baseurl, project_name):
+    def __init__(self, baseurl, project_name, skip):
         """
         Initialize attributes common for all Patchworks.
 
         Args:
             baseurl:      URL of the Patchwork instance.
             project_name: Project's `linkname` in Patchwork.
+            skip:         List of additional regex patterns to skip in patch
+                          names, case insensitive.
         """
         self.baseurl = baseurl
         self.project_id = self.get_project_id(project_name)
+        patterns_to_skip = SKIP_PATTERNS + skip
+        logging.debug('Patch subject patterns to skip: %s', patterns_to_skip)
+        self.skip = re.compile('|'.join(patterns_to_skip), re.IGNORECASE)
 
 
 class skt_patchwork2(PatchworkProject):
     """
     A Patchwork REST interface
     """
-    def __init__(self, baseurl, projectname, since, apikey=None):
+    def __init__(self, baseurl, projectname, since, apikey=None, skip=[]):
         """
         Initialize a Patchwork REST interface.
 
@@ -304,6 +308,8 @@ class skt_patchwork2(PatchworkProject):
                             accepted by dateutil.parser.parse. Patches with
                             this or earlier timestamp will be ignored.
             apikey:         Patchwork API authentication token.
+            skip:           List of additional regex patterns to skip in patch
+                            names, case insensitive.
         """
         # Last processed patch timestamp in a dateutil.parser.parse format
         self.since = since
@@ -313,9 +319,7 @@ class skt_patchwork2(PatchworkProject):
         self.apikey = apikey
         # JSON representation of API URLs retrieved from the Patchwork server
         self.apiurls = self.get_apiurls(baseurl)
-        # A regular expression matching names of the patches to skip
-        self.skp = re.compile("%s" % "|".join(SKIP_PATTERNS), re.IGNORECASE)
-        super(skt_patchwork2, self).__init__(baseurl, projectname)
+        super(skt_patchwork2, self).__init__(baseurl, projectname, skip)
 
     # TODO Convert this to a simple function
     @property
@@ -470,7 +474,7 @@ class skt_patchwork2(PatchworkProject):
                              series.get("id"), series.get("name"))
                 continue
 
-            if self.skp.search(series.get("name")):
+            if self.skip.search(series.get("name")):
                 logging.info("skipping series %d: %s", series.get("id"),
                              series.get("name"))
                 continue
@@ -769,7 +773,7 @@ class skt_patchwork(PatchworkProject):
     """
     A Patchwork XML RPC interface
     """
-    def __init__(self, baseurl, projectname, lastpatch):
+    def __init__(self, baseurl, projectname, lastpatch, skip=[]):
         """
         Initialize a Patchwork XML RPC interface.
 
@@ -777,6 +781,8 @@ class skt_patchwork(PatchworkProject):
             baseurl:        Patchwork base URL.
             projectname:    Patchwork project name, or None.
             lastpatch:      Maximum processed patch ID to start with.
+            skip:           List of additional regex patterns to skip in patch
+                            names, case insensitive.
         """
         # A list of patch object fields to request from RH fork of Patchwork
         # Only set if it's a RH fork.
@@ -785,8 +791,6 @@ class skt_patchwork(PatchworkProject):
         self.rpc = self.get_rpc(baseurl)
         # Maximum processed patch ID
         self.lastpatch = lastpatch
-        # A regular expression matching names of the patches to skip
-        self.skp = re.compile("%s" % "|".join(SKIP_PATTERNS), re.IGNORECASE)
         # A dictionary of patch series identified by a "series ID".
         # Series ID is an opaque string generated from patch properties
         # (such as message ID, submitter ID, etc.) and representing (not
@@ -797,7 +801,7 @@ class skt_patchwork(PatchworkProject):
         # A dictionary of series cover letter patch objects identified by
         # "series IDs", the same ones used in "series' above.
         self.covers = dict()
-        super(skt_patchwork, self).__init__(baseurl, projectname)
+        super(skt_patchwork, self).__init__(baseurl, projectname, skip)
 
     # TODO Convert this to a simple function
     @property
@@ -1082,7 +1086,7 @@ class skt_patchwork(PatchworkProject):
     def parse_patch(self, patch):
         """
         Accumulate an XML RPC patch object into the patch series dictionary,
-        skipping patches with names matching skip regex (self.skp), and
+        skipping patches with names matching skip regex (self.skip), and
         patches with invalid patchset positions. Update the maximum seen patch
         ID (self.lastpatch). Return a summary for the patchset the patch
         belongs to, if the supplied patch completes it (including single-patch
@@ -1099,7 +1103,7 @@ class skt_patchwork(PatchworkProject):
         pname = patch.get("name")
         result = None
 
-        if self.skp.search(pname):
+        if self.skip.search(pname):
             logging.info("skipping patch %d: %s", pid, pname)
             if pid > self.lastpatch:
                 self.lastpatch = pid

@@ -59,6 +59,9 @@ def setup_parser():
                                   help="API key to write down results")
     parser_patchwork.add_argument("--filter", type=str,
                                   help="Patchset filter program")
+    parser_patchwork.add_argument('--skip', nargs='+', default=[],
+                                  help='Patterns of patch names which should '
+                                  'be skipped for testing, case insensitive')
     parser_patchwork.set_defaults(func=cmd_patchwork)
 
     parser_testinfo = subparsers.add_parser("testinfo")
@@ -93,7 +96,7 @@ def cmd_patchwork(sw, cfg):
     sw.set_baseline(cfg.get("repo"), cfgurl=cfg.get("cfgurl"))
     sw.set_restapi(cfg.get("restapi"))
     sw.add_pw(cfg.get("baseurl"), cfg.get("project"), cfg.get("lastpatch"),
-              cfg.get("apikey"))
+              cfg.get("apikey"), cfg.get('skip'))
     sw.check_patchwork()
 
 
