@@ -461,9 +461,9 @@ class skt_patchwork2(PatchworkProject):
 
     def get_series_from_url(self, url):
         """
-        Retrieve a list of applicable (non-skipped) patchset summaries
-        for the specified patch series, or patch series list URL.
-        TODO Describe skipping criteria.
+        Retrieve a list of applicable patchset summaries for the specified
+        series URL. Series or patches matching skip patterns (self.skip) are
+        excluded.
 
         Args:
             url:    The patch series, or patch series list URL to retrieve
@@ -513,6 +513,13 @@ class skt_patchwork2(PatchworkProject):
             for patch in series.get("patches"):
                 logging.info("patch [%d] %s", patch.get("id"),
                              patch.get("name"))
+
+                if self.skip.search(patch.get("name")):
+                    logging.info("skipping patch %d: %s",
+                                 patch.get("id"),
+                                 patch.get("name"))
+                    continue
+
                 message_id, subject = self.get_header_value(patch.get("id"),
                                                             'Message-ID',
                                                             'Subject')
@@ -552,8 +559,9 @@ class skt_patchwork2(PatchworkProject):
 
     def get_patchsets_from_events(self, url):
         """
-        Retrieve a list of applicable (non-skipped) patchset summaries for the
-        specified event list URL.
+        Retrieve a list of applicable patchset summaries for the specified
+        event list URL. Series and patches which names match one of skip
+        patterns (self.skip) are excluded.
 
         Args:
             url:    The event list URL to retrieve patchset summaries for.
@@ -724,7 +732,9 @@ class skt_patchwork2(PatchworkProject):
 
     def get_new_patchsets(self):
         """
-        Retrieve a list of summaries of applicable (non-skipped) patchsets.
+        Retrieve a list of summaries of applicable patchsets. Series and
+        patches which names match one of skip patterns (self.skip) are
+        excluded.
 
         Returns:
             A list of patchset summaries.
@@ -746,11 +756,11 @@ class skt_patchwork2(PatchworkProject):
                                                  )))
         return patchsets
 
-    # TODO This shouldn't really skip patches to retrieve, should it?
     def get_patchsets(self, patchlist):
         """
-        Retrieve a list of summaries of applicable (non-skipped) patchset for
-        the specified list of patch IDs.
+        Retrieve a list of summaries of applicable patchsets for the specified
+        list of patch IDs. Patches which names match one of skip patterns
+        (self.skip) are excluded from the series.
 
         Args:
             patchlist:  List of patch IDs to retrieve patchset summaries for,
