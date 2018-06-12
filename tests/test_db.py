@@ -64,41 +64,6 @@ class TestDb(unittest.TestCase):  # pylint: disable=too-many-public-methods
         # Ensure the data was committed to the database
         mock_sql.connect().commit.assert_called()
 
-    @mock.patch('sktm.db.SktDb.unset_patchset_pending')
-    @mock.patch('sktm.db.SktDb.commit_series')
-    @mock.patch('sktm.db.SktDb.get_baselineid')
-    @mock.patch('sktm.db.SktDb.commit_testrun')
-    @mock.patch('sktm.db.SktDb.get_repoid')
-    @mock.patch('sktm.db.sqlite3')
-    def test_commit_patchtest(self, mock_sql, mock_get_repoid,
-                              mock_commit_testrun, mock_get_baselineid,
-                              mock_commit_series,
-                              mock_unset_patchset_pending):
-        """Ensure baseline is updated when current result is newer."""
-        # pylint: disable=too-many-arguments
-        testdb = SktDb(self.database_file)
-
-        mock_get_repoid.return_value = '1'
-        mock_commit_testrun.return_value = '2'
-        mock_get_baselineid.return_value = '3'
-        mock_commit_series.return_value = '4'
-        mock_unset_patchset_pending.return_value = None
-
-        patches = [(['patch_id'], 'patch_name', 'patch_url', 'base_url',
-                    'project_id', 'patch_date')]
-        testdb.commit_patchtest('baserepo', 'abcdef', patches, '5', '6', '7')
-
-        # Check if we have a proper INSERT query executed
-        execute_call_args = mock_sql.connect().cursor().execute.call_args[0]
-        self.assertIn('INSERT INTO patchtest', execute_call_args[0])
-        self.assertTupleEqual(
-            ('4', '3', '2'),
-            execute_call_args[1]
-        )
-
-        # Ensure the data was committed to the database
-        mock_sql.connect().commit.assert_called()
-
     @mock.patch('logging.debug')
     @mock.patch('sktm.db.SktDb.commit_patch')
     @mock.patch('sktm.db.SktDb.get_sourceid')

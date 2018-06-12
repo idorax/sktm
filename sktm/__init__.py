@@ -356,8 +356,7 @@ class watcher(object):
                         pass
 
                     if bres != sktm.tresult.BASELINE_FAILURE:
-                        self.db.commit_patchtest(self.baserepo, basehash,
-                                                 patches, bres, bid, series)
+                        self.db.commit_tested(patches, series)
                 else:
                     raise Exception("Unknown job type: %d" % pjt)
 

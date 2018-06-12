@@ -83,16 +83,6 @@ class SktDb(object):
                   testrun_id INTEGER,
                   FOREIGN KEY(baserepo_id) REFERENCES baserepo(id),
                   FOREIGN KEY(testrun_id) REFERENCES testrun(id)
-                );
-
-                CREATE TABLE patchtest(
-                  id INTEGER PRIMARY KEY,
-                  patch_series_id INTEGER,
-                  baseline_id INTEGER,
-                  testrun_id INTEGER,
-                  FOREIGN KEY(baseline_id) REFERENCES baseline(id),
-                  FOREIGN KEY(patch_series_id) REFERENCES patch(series_id),
-                  FOREIGN KEY(testrun_id) REFERENCES testrun(id)
                 );""")
 
         tc.commit()
@@ -491,37 +481,22 @@ class SktDb(object):
                              (testrun_id, commithash, baserepo_id))
             self.conn.commit()
 
-    def commit_patchtest(self, baserepo, commithash, patches, result,
-                         build_id, series=None):
-        """Add a patchtest for a patch.
+    def commit_tested(self, patches, series=None):
+        """Saved tested patches.
 
         Args:
-            baserepo:   Baseline Git repo URL.
-            commithash: Commit SHA of the baseline commit.
             patches:    List of patches that were tested
-            result:     Result ID of the test run.
-            build_id:   The build ID of the test run.
             series:     Series ID from patchwork.
 
         """
-        logging.debug("commit_patchtest: repo=%s; commit=%s; patches=%d; "
-                      "result=%s", baserepo, commithash, len(patches), result)
-        baserepo_id = self.get_repoid(baserepo)
-        baseline_id = self.get_baselineid(baserepo_id, commithash)
-        testrun_id = self.commit_testrun(result, build_id)
-        series_id = self.commit_series(patches, series)
+        logging.debug("commit_tested: patches=%d", len(patches))
+        self.commit_series(patches, series)
 
         for (patch_id, patch_name, patch_url, baseurl, project_id,
              patch_date) in patches:
             # TODO: Can accumulate per-project list instead of doing it one by
             # one
             self.unset_patchset_pending(baseurl, [patch_id])
-
-        self.cur.execute('INSERT INTO '
-                         'patchtest(patch_series_id, baseline_id, testrun_id) '
-                         'VALUES(?,?,?)',
-                         (series_id, baseline_id, testrun_id))
-        self.conn.commit()
 
     def commit_testrun(self, result, buildid):
         """Add a test run to the database.
