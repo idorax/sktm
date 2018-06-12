@@ -432,24 +432,6 @@ class TestDb(unittest.TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(result, 1)
 
     @mock.patch('sktm.db.sqlite3')
-    def test_get_series_result(self, mock_sql):
-        """Ensure a testrun.result_id is returned."""
-        testdb = SktDb(self.database_file)
-        mock_sql.connect().cursor().fetchone.return_value = [1]
-        result = testdb.get_series_result(1)
-
-        self.assertEqual(result, 1)
-
-    @mock.patch('sktm.db.sqlite3')
-    def test_get_series_result_empty(self, mock_sql):
-        """Ensure None is returned when the results list is empty."""
-        testdb = SktDb(self.database_file)
-        mock_sql.connect().cursor().fetchone.return_value = None
-        result = testdb.get_series_result(1)
-
-        self.assertIsNone(result)
-
-    @mock.patch('sktm.db.sqlite3')
     def test_get_sourceid(self, mock_sql):
         """Ensure get_sourceid() retrieves a patchsource id."""
         testdb = SktDb(self.database_file)

@@ -491,27 +491,6 @@ class SktDb(object):
                              (testrun_id, commithash, baserepo_id))
             self.conn.commit()
 
-    # FIXME: There is a chance of series_id collisions between different
-    # patchwork instances
-    def get_series_result(self, series_id):
-        """Get a result_id from a testrun of a patch series.
-
-        Args:
-            series_id:  Series ID from Patchwork.
-
-        """
-        self.cur.execute('SELECT testrun.result_id FROM patchtest, testrun '
-                         'WHERE patchtest.patch_series_id = ? '
-                         'AND patchtest.testrun_id = testrun.id '
-                         'LIMIT 1',
-                         (series_id, ))
-        result = self.cur.fetchone()
-
-        if not result:
-            return None
-
-        return result[0]
-
     def commit_patchtest(self, baserepo, commithash, patches, result,
                          build_id, series=None):
         """Add a patchtest for a patch.
