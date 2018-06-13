@@ -68,14 +68,14 @@ class TestObjectSummary(unittest.TestCase):
         self.assertEqual("{}/mbox".format(self.test_url), result)
 
 
-class TestPatchsetSummary(unittest.TestCase):
-    """Test cases for the PatchsetSummary class."""
+class TestSeriesSummary(unittest.TestCase):
+    """Test cases for the SeriesSummary class."""
 
     # pylint: disable=too-many-public-methods
 
     def setUp(self):
         """Test fixtures for testing __init__."""
-        self.testobj = patchwork.PatchsetSummary()
+        self.testobj = patchwork.SeriesSummary()
 
     def tearDown(self):
         """Destroy test fixtures when testing is complete."""
@@ -88,13 +88,13 @@ class TestPatchsetSummary(unittest.TestCase):
         self.assertEqual(test_value, self.testobj.message_id)
 
     def test_set_subject(self):
-        """Ensure the Subject of the patchset is set."""
+        """Ensure the Subject of the series is set."""
         test_value = "Testing Subject"
         self.testobj.set_subject(test_value)
         self.assertEqual(test_value, self.testobj.subject)
 
     def test_set_cover_letter(self):
-        """Ensure the cover letter of the patchset is set."""
+        """Ensure the cover letter of the series is set."""
         test_value = "Cover letter"
         self.testobj.set_cover_letter(test_value)
         self.assertEqual(test_value, self.testobj.cover_letter)

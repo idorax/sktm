@@ -194,12 +194,11 @@ class watcher(object):
         which shouldn't be tested at all.
 
         Args:
-            patchset_summary_list:  The list of summaries of patchsets
-                                    to filter.
+            patchset_summary_list:  The list of summaries of series to filter.
         Returns:
-            A tuple of patchset summary lists:
-                - patchsets ready for testing,
-                - patchsets which should not be tested
+            A tuple of series summary lists:
+                - series ready for testing,
+                - series which should not be tested
         """
         ready = []
         dropped = []
@@ -249,7 +248,7 @@ class watcher(object):
         # For every Patchwork interface
         for cpw in self.pw:
             patchsets = list()
-            # Get patchset summaries for all patches the Patchwork interface
+            # Get series summaries for all patches the Patchwork interface
             # hasn't seen yet
             new_patchsets = cpw.get_new_patchsets()
             for patchset in new_patchsets:
@@ -262,14 +261,14 @@ class watcher(object):
                 logging.info("dropped patchset: %s",
                              patchset.get_obj_url_list())
             patchsets += ready_patchsets
-            # Add patchset summaries for all patches staying pending for
+            # Add series summaries for all patches staying pending for
             # longer than 12 hours
             patchsets += cpw.get_patchsets(
                 self.db.get_expired_pending_patches(cpw.baseurl,
                                                     cpw.project_id,
                                                     43200)
             )
-            # For each patchset summary
+            # For each series summary
             for patchset in patchsets:
                 # (Re-)add the patchset's patches to the "pending" list
                 self.db.set_patchset_pending(cpw.baseurl, cpw.project_id,

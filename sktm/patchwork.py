@@ -85,27 +85,26 @@ class ObjectSummary(object):
         return self.url + self.mbox_sfx
 
 
-class PatchsetSummary(object):
-    """A patchset summary"""
+class SeriesSummary(object):
+    """A series summary"""
 
     def __init__(self):
-        """Initialize a patchset summary"""
-        # The "Message-Id" header of the message representing the patchset
+        """Initialize a series summary"""
+        # The "Message-Id" header of the message representing the series
         self.message_id = None
-        # The subject of the message representing the patchset
+        # The subject of the message representing the series
         self.subject = None
-        # A set of e-mail addresses involved with the patchset
+        # A set of e-mail addresses involved with the series
         self.email_addr_set = set()
         # An ObjectSummary of the cover letter, if any
         self.cover_letter = None
         # A list of object summaries (ObjectSummary objects) of patches
-        # comprising the patchset, in the order they should be applied in
+        # comprising the series, in the order they should be applied in
         self.patch_list = list()
 
     def set_message_id(self, message_id):
         """
-        Set "Message-Id" header value of the message representing the
-        patchset.
+        Set "Message-Id" header value of the message representing the series.
 
         Args:
             message_id: The "Message-Id" header value to set.
@@ -114,7 +113,7 @@ class PatchsetSummary(object):
 
     def set_subject(self, subject):
         """
-        Set the subject of the message representing the patchset.
+        Set the subject of the message representing the series.
 
         Args:
             subject:    The subject to set.
@@ -132,7 +131,7 @@ class PatchsetSummary(object):
 
     def merge_email_addr_set(self, email_addr_set):
         """
-        Merge a set of e-mail addresses involved with the patchset into
+        Merge a set of e-mail addresses involved with the series into
         the set collected so far.
 
         Args:
@@ -143,22 +142,22 @@ class PatchsetSummary(object):
     def add_patch(self, patch):
         """
         Add a patch object summary to the list of the patches comprising the
-        patchset.
+        series.
         """
         self.patch_list.append(patch)
 
     def is_empty(self):
         """
-        Check if a patchset summary is empty, i.e. doesn't have any patches.
+        Check if a series summary is empty, i.e. doesn't have any patches.
 
         Returns:
-            True if the patchset summary is empty, False otherwise.
+            True if the series summary is empty, False otherwise.
         """
         return len(self.patch_list) == 0
 
     def __get_obj_list(self):
         """
-        Get a list of summaries of objects representing the patchset.
+        Get a list of summaries of objects representing the series.
 
         Returns:
             A list of ObjectSummary instances.
@@ -171,7 +170,7 @@ class PatchsetSummary(object):
 
     def get_obj_url_list(self):
         """
-        Get a list of URLs of objects representing the patchset.
+        Get a list of URLs of objects representing the series.
 
         Returns:
             A list of mbox-based object URLs.
@@ -180,7 +179,7 @@ class PatchsetSummary(object):
 
     def get_obj_mbox_url_list(self):
         """
-        Get a list of mbox URLs of objects representing the patchset.
+        Get a list of mbox URLs of objects representing the series.
 
         Returns:
             A list of mbox URLs.
@@ -193,7 +192,7 @@ class PatchsetSummary(object):
 
         Returns:
             A list of tuples, each containing a Patchwork patch ID and the
-            value of the "Date" header of the patches comprising the patchset,
+            value of the "Date" header of the patches comprising the series,
             in the order they should be applied in.
         """
         return [(patch.patch_id, patch.date) for patch in self.patch_list]
@@ -203,7 +202,7 @@ class PatchsetSummary(object):
         Get a list of patch URLs.
 
         Returns:
-            A list of URLs of the patches comprising the patchset, in the
+            A list of URLs of the patches comprising the series, in the
             order they should be applied in.
         """
         return [patch.url for patch in self.patch_list]
@@ -214,7 +213,7 @@ class PatchsetSummary(object):
 
         Returns:
             A list of URLs pointing to mbox'es of the patches comprising the
-            patchset, in the order they should be applied in.
+            series, in the order they should be applied in.
         """
         return [patch.get_mbox_url() for patch in self.patch_list]
 
@@ -463,16 +462,16 @@ class skt_patchwork2(PatchworkProject):
 
     def get_series_from_url(self, url):
         """
-        Retrieve a list of applicable patchset summaries for the specified
+        Retrieve a list of applicable series summaries for the specified
         series URL. Series or patches matching skip patterns (self.skip) are
         excluded.
 
         Args:
             url:    The patch series, or patch series list URL to retrieve
-                    patchset summaries for.
+                    series summaries for.
 
         Returns:
-            A list of patchset summaries.
+            A list of SeriesSummary objects.
         """
         patchsets = list()
 
@@ -490,7 +489,7 @@ class skt_patchwork2(PatchworkProject):
             sdata = [sdata]
 
         for series in sdata:
-            patchset = PatchsetSummary()
+            patchset = SeriesSummary()
 
             if not series.get("received_all"):
                 logging.info("skipping incomplete series: [%d] %s",
@@ -561,15 +560,15 @@ class skt_patchwork2(PatchworkProject):
 
     def get_patchsets_from_events(self, url):
         """
-        Retrieve a list of applicable patchset summaries for the specified
+        Retrieve a list of applicable series summaries for the specified
         event list URL. Series and patches which names match one of skip
         patterns (self.skip) are excluded.
 
         Args:
-            url:    The event list URL to retrieve patchset summaries for.
+            url:    The event list URL to retrieve series summaries for.
 
         Returns:
-            A list of patchset summaries.
+            A list of SeriesSummary objects.
         """
         patchsets = list()
 
@@ -680,9 +679,8 @@ class skt_patchwork2(PatchworkProject):
 
     def get_patchsets_by_patch(self, url, seen=set()):
         """
-        Retrieve a list of summaries of patchsets, which weren't already
-        "seen", and which contain the patch or patches available at the
-        specified URL.
+        Retrieve a list of series summaries, which weren't already "seen", and
+        which contain the patch or patches available at the specified URL.
 
         Args:
             url:    The URL pointing to a patch or a patch list to retrieve
@@ -692,7 +690,7 @@ class skt_patchwork2(PatchworkProject):
                     processed.
 
         Returns:
-            A list of patchset summaries.
+            A list of SeriesSummary objects.
         """
         patchsets = list()
 
@@ -734,12 +732,11 @@ class skt_patchwork2(PatchworkProject):
 
     def get_new_patchsets(self):
         """
-        Retrieve a list of summaries of applicable patchsets. Series and
-        patches which names match one of skip patterns (self.skip) are
-        excluded.
+        Retrieve a list of series summaries. Series and patches which names
+        match one of skip patterns (self.skip) are excluded.
 
         Returns:
-            A list of patchset summaries.
+            A list series summaries.
         """
         # Timestamp filtering for 'since' parameter uses '>=' operation so by
         # using unmodified time, we'd get the last patchset from previous run
@@ -760,16 +757,16 @@ class skt_patchwork2(PatchworkProject):
 
     def get_patchsets(self, patchlist):
         """
-        Retrieve a list of summaries of applicable patchsets for the specified
+        Retrieve a list of applicable series summaries for the specified
         list of patch IDs. Patches which names match one of skip patterns
         (self.skip) are excluded from the series.
 
         Args:
-            patchlist:  List of patch IDs to retrieve patchset summaries for,
+            patchlist:  List of patch IDs to retrieve series summaries for,
                         or skip over.
 
         Returns:
-            A list of patchset summaries.
+            A list of SeriesSummary objects.
         """
         patchsets = list()
         seen = set()
@@ -1018,7 +1015,7 @@ class skt_patchwork(PatchworkProject):
             patch   An XML RPC patch object as returned by get_patch_by_id().
 
         Returns:
-            A patchset summary, or none, if patch is skipped or patchset is
+            A series summary, or none, if patch is skipped or seires are
             not complete yet.
         """
         pid = patch.get("id")
@@ -1090,11 +1087,11 @@ class skt_patchwork(PatchworkProject):
 
                 # If we already got all the patches in the series
                 if len(self.series[seriesid].keys()) == mpatch:
-                    # Create the patchset summary
+                    # Create the series summary
                     logging.info("---")
                     logging.info("patchset: %s", seriesid)
 
-                    result = PatchsetSummary()
+                    result = SeriesSummary()
                     cover = self.covers.get(seriesid)
                     if cover:
                         result.set_cover_letter(
@@ -1137,7 +1134,7 @@ class skt_patchwork(PatchworkProject):
                                                         'Subject')
             emails = self.get_emails(pid)
             self.log_patch(pid, pname, message_id, emails)
-            result = PatchsetSummary()
+            result = SeriesSummary()
             result.set_message_id(message_id)
             result.set_subject(subject)
             result.merge_email_addr_set(emails)
@@ -1155,12 +1152,12 @@ class skt_patchwork(PatchworkProject):
 
     def get_new_patchsets(self):
         """
-        Retrieve a list of summaries for any completed patchsets comprised
+        Retrieve a list of summaries for any completed series comprised
         of patches with ID greater than the maximum seen patch ID
         (self.lastpatch). Update the maximum seen patch ID (self.lastpatch).
 
         Returns:
-            A list of patchset summaries.
+            A list of SeriesSummary objects.
         """
         patchsets = list()
 
@@ -1175,16 +1172,16 @@ class skt_patchwork(PatchworkProject):
     # TODO This shouldn't really skip patches to retrieve, should it?
     def get_patchsets(self, patchlist):
         """
-        Retrieve a list of summaries of any complete patchsets comprised by a
+        Retrieve a list of summaries of any complete series comprised by a
         list of non-skipped patches with the specified IDs. Update the maximum
         seen patch ID (self.lastpatch).
 
         Args:
-            patchlist:  List of patch IDs to retrieve patchset summaries for,
+            patchlist:  List of patch IDs to retrieve series summaries for,
                         or skip over.
 
         Returns:
-            A list of patchset summaries.
+            A list of SeriesSummary objects.
         """
         patchsets = list()
 
