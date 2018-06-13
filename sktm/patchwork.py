@@ -473,7 +473,7 @@ class skt_patchwork2(PatchworkProject):
         Returns:
             A list of SeriesSummary objects.
         """
-        patchsets = list()
+        series_list = list()
 
         logging.debug("get_series_from_url %s", url)
         r = requests.get(url)
@@ -489,7 +489,7 @@ class skt_patchwork2(PatchworkProject):
             sdata = [sdata]
 
         for series in sdata:
-            patchset = SeriesSummary()
+            series_summary = SeriesSummary()
 
             if not series.get("received_all"):
                 logging.info("skipping incomplete series: [%d] %s",
@@ -505,7 +505,7 @@ class skt_patchwork2(PatchworkProject):
             if cover:
                 match = re.match("^(.*)/mbox/?$", cover.get("mbox", ""))
                 if match:
-                    patchset.set_cover_letter(
+                    series_summary.set_cover_letter(
                         ObjectSummary(match.group(1), cover.get("date")))
 
             logging.info("series [%d] %s", series.get("id"),
@@ -531,22 +531,22 @@ class skt_patchwork2(PatchworkProject):
                               subject)
                 logging.debug("patch [%d] emails: %s", patch.get("id"),
                               emails)
-                patchset.set_message_id(message_id)
-                patchset.set_subject(subject)
-                patchset.merge_email_addr_set(emails)
-                patchset.add_patch(
+                series_summary.set_message_id(message_id)
+                series_summary.set_subject(subject)
+                series_summary.merge_email_addr_set(emails)
+                series_summary.add_patch(
                     ObjectSummary(self.get_patch_url(patch),
                                   patch.get("date"), patch.get("id")))
             logging.info("---")
 
-            if not patchset.is_empty():
+            if not series_summary.is_empty():
                 logging.debug("series [%d] message_id: %s", series.get("id"),
-                              patchset.message_id)
+                              series_summary.message_id)
                 logging.debug("series [%d] subject: %s", series.get("id"),
-                              patchset.subject)
+                              series_summary.subject)
                 logging.debug("series [%d] emails: %s", series.get("id"),
-                              patchset.email_addr_set)
-                patchsets.append(patchset)
+                              series_summary.email_addr_set)
+                series_list.append(series_summary)
 
         link = r.headers.get("Link")
         if link is not None:
@@ -554,9 +554,9 @@ class skt_patchwork2(PatchworkProject):
             if m:
                 nurl = m.group(1)
                 # TODO Limit recursion
-                patchsets += self.get_series_from_url(nurl)
+                series_list += self.get_series_from_url(nurl)
 
-        return patchsets
+        return series_list
 
     def get_patchsets_from_events(self, url):
         """
@@ -570,7 +570,7 @@ class skt_patchwork2(PatchworkProject):
         Returns:
             A list of SeriesSummary objects.
         """
-        patchsets = list()
+        series_list = list()
 
         logging.debug("get_patchsets_from_events: %s", url)
         r = requests.get(url)
@@ -596,7 +596,7 @@ class skt_patchwork2(PatchworkProject):
             if self.nsince is None or self.nsince < edate:
                 self.nsince = edate
 
-            patchsets += self.get_series_from_url(series.get("url"))
+            series_list += self.get_series_from_url(series.get("url"))
 
         link = r.headers.get("Link")
         if link is not None:
@@ -604,9 +604,9 @@ class skt_patchwork2(PatchworkProject):
             if m:
                 nurl = m.group(1)
                 # TODO Limit recursion
-                patchsets += self.get_patchsets_from_events(nurl)
+                series_list += self.get_patchsets_from_events(nurl)
 
-        return patchsets
+        return series_list
 
     def _set_patch_check(self, patch, payload):
         """
@@ -692,7 +692,7 @@ class skt_patchwork2(PatchworkProject):
         Returns:
             A list of SeriesSummary objects.
         """
-        patchsets = list()
+        series_list = list()
 
         logging.debug("get_patchsets_by_patch %s", url)
         r = requests.get(url)
@@ -714,7 +714,7 @@ class skt_patchwork2(PatchworkProject):
                 if sid in seen:
                     continue
                 else:
-                    patchsets += self.get_series_from_url("%s/%d" % (
+                    series_list += self.get_series_from_url("%s/%d" % (
                         self.apiurls.get("series"),
                         sid
                     ))
@@ -726,9 +726,9 @@ class skt_patchwork2(PatchworkProject):
             if m:
                 nurl = m.group(1)
                 # TODO Limit recursion
-                patchsets += self.get_patchsets_by_patch(nurl, seen)
+                series_list += self.get_patchsets_by_patch(nurl, seen)
 
-        return patchsets
+        return series_list
 
     def get_new_patchsets(self):
         """
@@ -739,21 +739,21 @@ class skt_patchwork2(PatchworkProject):
             A list series summaries.
         """
         # Timestamp filtering for 'since' parameter uses '>=' operation so by
-        # using unmodified time, we'd get the last patchset from previous run
+        # using unmodified time, we'd get the last series from previous run
         # again. Add a second to it in order to avoid re-running tests for this
-        # last seen patchset.
+        # last seen series.
         nsince = dateutil.parser.parse(
             self.since
         ) + datetime.timedelta(seconds=1)
 
         logging.debug("get_new_patchsets since %s", nsince.isoformat())
-        patchsets = self.get_patchsets_by_patch("%s?project=%d&since=%s" %
-                                                (self.apiurls.get("patches"),
-                                                 self.project_id,
-                                                 urllib.quote(
-                                                     nsince.isoformat()
-                                                 )))
-        return patchsets
+        new_series = self.get_patchsets_by_patch("%s?project=%d&since=%s" %
+                                                 (self.apiurls.get("patches"),
+                                                  self.project_id,
+                                                  urllib.quote(
+                                                      nsince.isoformat()
+                                                  )))
+        return new_series
 
     def get_patchsets(self, patchlist):
         """
@@ -768,7 +768,7 @@ class skt_patchwork2(PatchworkProject):
         Returns:
             A list of SeriesSummary objects.
         """
-        patchsets = list()
+        series_list = list()
         seen = set()
 
         logging.debug("get_patchsets: %s", patchlist)
@@ -780,13 +780,13 @@ class skt_patchwork2(PatchworkProject):
                 for series in patch.get("series"):
                     sid = series.get("id")
                     if sid not in seen:
-                        patchsets += self.get_series_from_url("%s/%d" % (
+                        series_list += self.get_series_from_url("%s/%d" % (
                             self.apiurls.get("series"),
                             sid
                         ))
                         seen.add(sid)
 
-        return patchsets
+        return series_list
 
 
 class skt_patchwork(PatchworkProject):
@@ -1159,15 +1159,15 @@ class skt_patchwork(PatchworkProject):
         Returns:
             A list of SeriesSummary objects.
         """
-        patchsets = list()
+        series_list = list()
 
         logging.debug("get_new_patchsets: %d", self.lastpatch)
         for patch in self.get_patch_list({'project_id': self.project_id,
                                           'id__gt': self.lastpatch}):
             pset = self.parse_patch(patch)
             if pset:
-                patchsets.append(pset)
-        return patchsets
+                series_list.append(pset)
+        return series_list
 
     # TODO This shouldn't really skip patches to retrieve, should it?
     def get_patchsets(self, patchlist):
@@ -1183,7 +1183,7 @@ class skt_patchwork(PatchworkProject):
         Returns:
             A list of SeriesSummary objects.
         """
-        patchsets = list()
+        series_list = list()
 
         logging.debug("get_patchsets: %s", patchlist)
         for pid in patchlist:
@@ -1191,5 +1191,5 @@ class skt_patchwork(PatchworkProject):
             if patch:
                 pset = self.parse_patch(patch)
                 if pset:
-                    patchsets.append(pset)
-        return patchsets
+                    series_list.append(pset)
+        return series_list
