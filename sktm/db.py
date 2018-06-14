@@ -392,7 +392,7 @@ class SktDb(object):
 
         return result[0]
 
-    def set_patchset_pending(self, baseurl, project_id, patchset):
+    def set_patchset_pending(self, baseurl, project_id, series_data):
         """Add a patch to pendingpatches or update an existing entry.
 
         Add each specified patch to the list of "pending" patches, with
@@ -402,39 +402,39 @@ class SktDb(object):
         base URL").
 
         Args:
-            baseurl:    Base URL of the Patchwork instance the project ID and
-                        patch IDs belong to.
-            project_id: ID of the Patchwork project the patch IDs belong to.
-            patchset:   List of info tuples for patches to add to the list,
-                        where each tuple contains the patch ID and a free-form
-                        patch date string.
+            baseurl:     Base URL of the Patchwork instance the project ID and
+                         patch IDs belong to.
+            project_id:  ID of the Patchwork project the patch IDs belong to.
+            series_data: List of info tuples for patches to add to the list,
+                         where each tuple contains the patch ID and a free-form
+                         patch date string.
 
         """
         sourceid = self.get_sourceid(baseurl, project_id)
         tstamp = int(time.time())
 
-        logging.debug("setting patches as pending: %s", patchset)
+        logging.debug("setting patches as pending: %s", series_data)
         self.cur.executemany('INSERT OR REPLACE INTO '
                              'pendingpatches(id, pdate, patchsource_id, '
                              'timestamp) '
                              'VALUES(?, ?, ?, ?)',
                              [(patch_id, patch_date, sourceid, tstamp) for
-                              (patch_id, patch_date) in patchset])
+                              (patch_id, patch_date) in series_data])
         self.conn.commit()
 
-    def unset_patchset_pending(self, baseurl, patchset):
+    def unset_patchset_pending(self, baseurl, patch_id_list):
         """Remove a patch from the list of pending patches.
 
         Remove each specified patch from the list of "pending" patches, for
         the specified Patchwork base URL.
 
         Args:
-            baseurl:    Base URL of the Patchwork instance the patch IDs
-                        belong to.
-            patchset:   List of IDs of patches to be removed from the list.
+            baseurl:       Base URL of the Patchwork instance the patch IDs
+                           belong to.
+            patch_id_list: List of IDs of patches to be removed from the list.
 
         """
-        logging.debug("removing patches from pending list: %s", patchset)
+        logging.debug("removing patches from pending list: %s", patch_id_list)
 
         self.cur.executemany('DELETE FROM pendingpatches WHERE '
                              'patchsource_id IN '
@@ -442,7 +442,7 @@ class SktDb(object):
                              'baseurl = ?) '
                              'AND id = ? ',
                              [(baseurl, patch_id) for
-                              patch_id in patchset])
+                              patch_id in patch_id_list])
         self.conn.commit()
 
     def update_baseline(self, baserepo, commithash, commitdate,
