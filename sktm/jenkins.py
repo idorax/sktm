@@ -273,7 +273,7 @@ class skt_jenkins(object):
               message_id=None, subject=None, emails=set(), patchwork=[],
               makeopts=None):
         """
-        Submit a build of a patchset.
+        Submit a build of a patch series.
 
         Args:
             jobname:    Name of the Jenkins project to build.
@@ -281,10 +281,10 @@ class skt_jenkins(object):
             ref:        Baseline Git reference to test.
             baseconfig: Kernel configuration URL.
             message_id: Value of the "Message-Id" header of the e-mail
-                        message representing the patchset, or None if unknown.
-            subject:    Subject of the message representing the patchset, or
+                        message representing the series, or None if unknown.
+            subject:    Subject of the message representing the series, or
                         None if unknown.
-            emails:     Set of e-mail addresses involved with the patchset to
+            emails:     Set of e-mail addresses involved with the series to
                         send notifications to.
             patchwork:  List of URLs pointing to patches to apply.
             makeopts:   String of extra arguments to pass to the build's make
