@@ -318,7 +318,7 @@ class PatchworkProject(object):
         """
         # Use os.path for manipulation with URL because urlparse can't deal
         # with URLs ending both with and without slash.
-        mbox_url = os.path.join(self.baseurl, patch_id, suffix)
+        mbox_url = os.path.join(self.baseurl, 'patch', str(patch_id), suffix)
 
         try:
             response = requests.get(mbox_url)
