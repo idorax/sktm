@@ -54,13 +54,13 @@ class watcher(object):
             jenkinspassword:    Jenkins user password.
             jenkinsjobname:     Name of the Jenkins job to trigger and watch.
             dbpath:             Path to the job status database file.
-            patch_filter:       The name of a patchset filter program.
+            patch_filter:       The name of a patch series filter program.
                                 The program should accept a list of mbox URLs
                                 as its arguments, pointing to the patches to
                                 apply, and also a "-c/--cover" option,
                                 specifying the cover letter mbox URL, if any.
                                 The program must exit with zero if the
-                                patchset can be tested, one if it shouldn't be
+                                series can be tested, one if it shouldn't be
                                 tested at all, and 127 if an error occurred.
                                 All other exit codes are reserved.
             makeopts:           Extra arguments to pass to "make" when
@@ -188,13 +188,13 @@ class watcher(object):
                                       makeopts=self.makeopts),
                         None))
 
-    def filter_patchsets(self, patchset_summary_list):
+    def filter_patchsets(self, series_summary_list):
         """
-        Filter patchsets, determining which ones are ready for testing, and
+        Filter series, determining which ones are ready for testing, and
         which shouldn't be tested at all.
 
         Args:
-            patchset_summary_list:  The list of summaries of series to filter.
+            series_summary_list:  The list of summaries of series to filter.
         Returns:
             A tuple of series summary lists:
                 - series ready for testing,
@@ -204,21 +204,21 @@ class watcher(object):
         dropped = []
 
         if self.patch_filter:
-            for patchset_summary in patchset_summary_list:
+            for series_summary in series_summary_list:
                 argv = [self.patch_filter]
-                if patchset_summary.cover_letter:
+                if series_summary.cover_letter:
                     argv += ["--cover",
-                             patchset_summary.cover_letter.get_mbox_url()]
-                argv += patchset_summary.get_patch_mbox_url_list()
+                             series_summary.cover_letter.get_mbox_url()]
+                argv += series_summary.get_patch_mbox_url_list()
                 # TODO Shell-quote
                 cmd = " ".join(argv)
                 logging.info("Executing patch filter command %s", cmd)
                 # TODO Redirect output to logs
                 status = subprocess.call(argv)
                 if status == 0:
-                    ready.append(patchset_summary)
+                    ready.append(series_summary)
                 elif status == 1:
-                    dropped.append(patchset_summary)
+                    dropped.append(series_summary)
                 elif status == 127:
                     raise Exception("Filter command %s failed" % (cmd))
                 elif status < 0:
@@ -228,15 +228,15 @@ class watcher(object):
                     raise Exception("Filter command %s returned "
                                     "invalid status %d" % (cmd, status))
         else:
-            ready += patchset_summary_list
+            ready += series_summary_list
 
         return ready, dropped
 
     def check_patchwork(self):
         """
-        Submit and register Jenkins builds for patchsets which appeared in
+        Submit and register Jenkins builds for series which appeared in
         Patchwork instances after their last processed patches, and for
-        patchsets which are comprised of patches added to the "pending" list
+        series which are comprised of patches added to the "pending" list
         in the database, more than 12 hours ago.
         """
         stablecommit = self.db.get_stable(self.baserepo)
@@ -247,50 +247,48 @@ class watcher(object):
         logging.info("stable commit for %s is %s", self.baserepo, stablecommit)
         # For every Patchwork interface
         for cpw in self.pw:
-            patchsets = list()
+            series_list = list()
             # Get series summaries for all patches the Patchwork interface
             # hasn't seen yet
-            new_patchsets = cpw.get_new_patchsets()
-            for patchset in new_patchsets:
-                logging.info("new patchset: %s", patchset.get_obj_url_list())
-            ready_patchsets, dropped_patchsets = \
-                self.filter_patchsets(new_patchsets)
-            for patchset in ready_patchsets:
-                logging.info("ready patchset: %s", patchset.get_obj_url_list())
-            for patchset in dropped_patchsets:
-                logging.info("dropped patchset: %s",
-                             patchset.get_obj_url_list())
-            patchsets += ready_patchsets
+            new_series = cpw.get_new_patchsets()
+            for series in new_series:
+                logging.info("new series: %s", series.get_obj_url_list())
+            series_ready, series_dropped = self.filter_patchsets(new_series)
+            for series in series_ready:
+                logging.info("ready series: %s", series.get_obj_url_list())
+            for series in series_dropped:
+                logging.info("dropped series: %s", series.get_obj_url_list())
+            series_list += series_ready
             # Add series summaries for all patches staying pending for
             # longer than 12 hours
-            patchsets += cpw.get_patchsets(
+            series_list += cpw.get_patchsets(
                 self.db.get_expired_pending_patches(cpw.baseurl,
                                                     cpw.project_id,
                                                     43200)
             )
             # For each series summary
-            for patchset in patchsets:
-                # (Re-)add the patchset's patches to the "pending" list
+            for series in series_list:
+                # (Re-)add the series' patches to the "pending" list
                 self.db.set_patchset_pending(cpw.baseurl, cpw.project_id,
-                                             patchset.get_patch_info_list())
-                # Submit and remember a Jenkins build for the patchset
+                                             series.get_patch_info_list())
+                # Submit and remember a Jenkins build for the series
                 self.pj.append((sktm.jtype.PATCHWORK,
                                 self.jk.build(
                                     self.jobname,
                                     baserepo=self.baserepo,
                                     ref=stablecommit,
                                     baseconfig=self.cfgurl,
-                                    message_id=patchset.message_id,
-                                    subject=patchset.subject,
-                                    emails=patchset.email_addr_set,
-                                    patchwork=patchset.get_patch_url_list(),
+                                    message_id=series.message_id,
+                                    subject=series.subject,
+                                    emails=series.email_addr_set,
+                                    patchwork=series.get_patch_url_list(),
                                     makeopts=self.makeopts),
                                 cpw))
-                logging.info("submitted message ID: %s", patchset.message_id)
-                logging.info("submitted subject: %s", patchset.subject)
-                logging.info("submitted emails: %s", patchset.email_addr_set)
-                logging.info("submitted patchset: %s",
-                             patchset.get_patch_url_list())
+                logging.info("submitted message ID: %s", series.message_id)
+                logging.info("submitted subject: %s", series.subject)
+                logging.info("submitted emails: %s", series.email_addr_set)
+                logging.info("submitted series: %s",
+                             series.get_patch_url_list())
 
     def check_pending(self):
         for (pjt, bid, cpw) in self.pj:
@@ -324,9 +322,9 @@ class watcher(object):
                             bid
                         )
 
-                    patchset = self.jk.get_patchwork(self.jobname, bid)
-                    for purl in patchset:
-                        match = re.match(r"(.*)/patch/(\d+)$", purl)
+                    patch_url_list = self.jk.get_patchwork(self.jobname, bid)
+                    for patch_url in patch_url_list:
+                        match = re.match(r"(.*)/patch/(\d+)$", patch_url)
                         if match:
                             baseurl = match.group(1)
                             pid = int(match.group(2))
@@ -341,21 +339,22 @@ class watcher(object):
                                     slist.append(series.get("id"))
                             else:
                                 projid = int(patch.get("project_id"))
-                            patches.append((pid, patch.get("name"), purl,
+                            patches.append((pid, patch.get("name"), patch_url,
                                             baseurl, projid,
                                             patch.get("date").replace(" ",
                                                                       "T")))
                             cpw.set_patch_check(pid, rurl, bres)
                         else:
-                            raise Exception("Malfomed patch url: %s" % purl)
+                            raise Exception("Malfomed patch url: %s" %
+                                            patch_url)
 
                     try:
-                        series = max(set(slist), key=slist.count)
+                        series_id = max(set(slist), key=slist.count)
                     except ValueError:
                         pass
 
                     if bres != sktm.tresult.BASELINE_FAILURE:
-                        self.db.commit_tested(patches, series)
+                        self.db.commit_tested(patches, series_id)
                 else:
                     raise Exception("Unknown job type: %d" % pjt)
 
