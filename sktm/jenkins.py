@@ -45,35 +45,122 @@ class skt_jenkins(object):
 
         return build
 
-    def get_cfg_data(self, jobname, buildid, stepname, cfgkey, default=None):
+    def __get_data_list(self, jobname, buildid, stepname, key):
         """
-        Get a value from a JSON-formatted output of a test result, of the
-        specified completed build for the specified project. Wait for the
-        build to complete, if it hasn't yet.
+        Get a list of values of a build resultset key, for all steps matching
+        the specified name, of the specified completed build, for the
+        specified project. Wait for the build to complete, if it hasn't yet.
 
         Args:
             jobname:    Jenkins project name.
             buildid:    Jenkins build ID.
-            stepname:   Test (step) path in the result, which output should be
-                        parsed as JSON.
-            cfgkey:     Name of the JSON key to retrieve value of.
-            default:    The default value to use if the key is not found.
-                        Optional, assumed None, if not specified.
+            stepname:   A path matching test steps in the result, which
+                        resultset should be accessed.
+            key:        Name of the resultset key to retrieve value of.
 
         Returns:
-            The key value, or the default if not found.
+            The list of key values.
         """
+        value_list = []
         build = self._wait_and_get_build(jobname, buildid)
 
         if not build.has_resultset():
             raise Exception("No results for build %d (%s)" %
                             (buildid, build.get_status()))
 
-        for (key, val) in build.get_resultset().iteritems():
-            if key == stepname:
-                logging.debug("stdout=%s", val.stdout)
-                cfg = json.loads(val.stdout)
-                return cfg.get(cfgkey, default)
+        for (k, v) in build.get_resultset().iteritems():
+            if k == stepname:
+                value_list.append(v.__dict__[key])
+
+        return value_list
+
+    def __get_cfg_data_list(self, jobname, buildid, stepname,
+                            cfgkey, default=None):
+        """
+        Get a list of values from a JSON-formatted output of a test result,
+        for all steps matching the specified name, of the specified completed
+        build for the specified project. Wait for the build to complete, if it
+        hasn't yet.
+
+        Args:
+            jobname:    Jenkins project name.
+            buildid:    Jenkins build ID.
+            stepname:   A path matching test steps in the result, which output
+                        should be parsed as JSON.
+            cfgkey:     Name of the JSON key to retrieve value of.
+            default:    The default value to use if a key is not found, for
+                        each matching step. Optional, assumed None, if not
+                        specified.
+
+        Returns:
+            The list of key values, with defaults for steps where they were
+            not found.
+        """
+        value_list = []
+        for stdout in self.__get_data_list(jobname, buildid,
+                                           stepname, "stdout"):
+            logging.debug("stdout=%s", stdout)
+            cfg = json.loads(stdout)
+            value_list.append(cfg.get(cfgkey, default))
+
+        return value_list
+
+    def __get_cfg_data_uniform(self, jobname, buildid, stepname,
+                               cfgkey, default=None):
+        """
+        Get a uniform value from a JSON-formatted output of a test result,
+        for all steps matching the specified name, of the specified completed
+        build for the specified project. Wait for the build to complete, if it
+        hasn't yet. Throw an exception if the value is not uniform across all
+        steps.
+
+        Args:
+            jobname:    Jenkins project name.
+            buildid:    Jenkins build ID.
+            stepname:   A path matching test steps in the result, which output
+                        should be parsed as JSON.
+            cfgkey:     Name of the JSON key to retrieve value of.
+            default:    The default value to use if a key is not found, for
+                        each matching step. Optional, assumed None, if not
+                        specified.
+
+        Returns:
+            The value uniform for the key across all steps.
+        """
+        def verify(x, y):
+            if x != y:
+                raise Exception("Non-uniform value of key %s: %s != %s",
+                                cfgkey, x, y)
+            return x
+
+        return reduce(verify,
+                      self.__get_cfg_data_list(jobname, buildid, stepname,
+                                               cfgkey, default))
+
+    def __get_cfg_data_max(self, jobname, buildid, stepname,
+                           cfgkey, default=None):
+        """
+        Get the maximum value from a JSON-formatted output of a test result,
+        for all steps matching the specified name, of the specified completed
+        build for the specified project. Wait for the build to complete, if it
+        hasn't yet.
+
+        Args:
+            jobname:    Jenkins project name.
+            buildid:    Jenkins build ID.
+            stepname:   A path matching test steps in the result, which output
+                        should be parsed as JSON.
+            cfgkey:     Name of the JSON key to retrieve value of.
+            default:    The default value to use if a key is not found, for
+                        each matching step. Optional, assumed None, if not
+                        specified.
+
+        Returns:
+            The maximum value of the key across all steps.
+        """
+        return reduce(lambda x, y: (x if x > y else y),
+                      self.__get_cfg_data_list(jobname, buildid, stepname,
+                                               cfgkey, default))
 
     def get_base_commitdate(self, jobname, buildid):
         """
@@ -88,8 +175,8 @@ class skt_jenkins(object):
         Return:
             The epoch timestamp string of the committer date.
         """
-        return self.get_cfg_data(jobname, buildid, "skt.cmd_merge",
-                                 "commitdate")
+        return self.__get_cfg_data_uniform(jobname, buildid, "skt.cmd_merge",
+                                           "commitdate")
 
     def get_base_hash(self, jobname, buildid):
         """
@@ -103,8 +190,8 @@ class skt_jenkins(object):
         Return:
             The base commit's hash string.
         """
-        return self.get_cfg_data(jobname, buildid, "skt.cmd_merge",
-                                 "basehead")
+        return self.__get_cfg_data_uniform(jobname, buildid, "skt.cmd_merge",
+                                           "basehead")
 
     # FIXME Clarify function name
     def get_patchwork(self, jobname, buildid):
@@ -120,18 +207,33 @@ class skt_jenkins(object):
         Return:
             The list of Patchwork patch URLs.
         """
-        return self.get_cfg_data(jobname, buildid, "skt.cmd_merge",
-                                 "pw")
+        return self.__get_cfg_data_uniform(jobname, buildid, "skt.cmd_merge",
+                                           "pw")
 
     def get_baseretcode(self, jobname, buildid):
-        return self.get_cfg_data(jobname, buildid, "skt.cmd_run",
-                                 "baseretcode", 0)
+        """
+        Get the maximum (the worst) return code of a baseline test across all
+        "run" steps for the specified completed build of the specified
+        project. Wait for the build to complete, if it hasn't yet.
+        """
+        return self.__get_cfg_data_max(jobname, buildid, "skt.cmd_run",
+                                       "baseretcode", 0)
 
     def get_result_url(self, jobname, buildid):
         return "%s/job/%s/%s" % (self.server.base_server_url(), jobname,
                                  buildid)
 
     def get_result(self, jobname, buildid):
+        """
+        Get the status of a build for specified project name and build ID.
+
+        Args:
+            jobname:    Jenkins project name.
+            buildid:    Jenkins build ID.
+
+        Return:
+            Status of the build (an sktm.tresult).
+        """
         build = self._wait_and_get_build(jobname, buildid)
 
         bstatus = build.get_status()
@@ -140,31 +242,28 @@ class skt_jenkins(object):
         if bstatus == "SUCCESS":
             return sktm.tresult.SUCCESS
 
-        if not build.has_resultset():
-            raise Exception("No results for build %d (%s)" %
-                            (buildid, build.get_status()))
-
+        # If build is UNSTABLE and all cmd_run steps are PASSED or FIXED
         if bstatus == "UNSTABLE" and \
-                (build.get_resultset()["skt.cmd_run"].status in
-                 ["PASSED", "FIXED"]):
+                (set(self.__get_data_list(jobname, buildid,
+                                          "skt.cmd_run", "status")) <=
+                 set(["PASSED", "FIXED"])):
+            # If there was at least one baseline test failure
             if self.get_baseretcode(jobname, buildid) != 0:
                 logging.warning("baseline failure found during patch testing")
                 return sktm.tresult.BASELINE_FAILURE
 
             return sktm.tresult.SUCCESS
 
-        for (key, val) in build.get_resultset().iteritems():
-            if not key.startswith("skt."):
-                logging.debug("skipping key=%s; value=%s", key, val.status)
-                continue
-            logging.debug("key=%s; value=%s", key, val.status)
-            if val.status == "FAILED" or val.status == "REGRESSION":
-                if key == "skt.cmd_merge":
-                    return sktm.tresult.MERGE_FAILURE
-                elif key == "skt.cmd_build":
-                    return sktm.tresult.BUILD_FAILURE
-                elif key == "skt.cmd_run":
-                    return sktm.tresult.TEST_FAILURE
+        # Find earliest (worst) step failure
+        step_failure_result_list = [
+            ("skt.cmd_merge",   sktm.tresult.MERGE_FAILURE),
+            ("skt.cmd_build",   sktm.tresult.BUILD_FAILURE),
+            ("skt.cmd_run",     sktm.tresult.TEST_FAILURE),
+        ]
+        for (step, failure_result) in step_failure_result_list:
+            if set(self.__get_data_list(jobname, buildid, step, "status")) & \
+                    set(["FAILED", "REGRESSION"]):
+                return failure_result
 
         logging.warning("Unknown status. marking as test failure")
         return sktm.tresult.TEST_FAILURE
