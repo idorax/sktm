@@ -306,7 +306,7 @@ class watcher(object):
                 elif pjt == sktm.jtype.PATCHWORK:
                     patches = list()
                     slist = list()
-                    series = None
+                    series_id = None
                     bres = self.jk.get_result(self.jobname, bid)
                     rurl = self.jk.get_result_url(self.jobname, bid)
                     logging.info("result=%s", bres)
