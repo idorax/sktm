@@ -293,9 +293,10 @@ class PatchworkProject(object):
         patterns_to_skip = SKIP_PATTERNS + skip
         logging.debug('Patch subject patterns to skip: %s', patterns_to_skip)
         self.skip = re.compile('|'.join(patterns_to_skip), re.IGNORECASE)
-        # Initialize RH-instance marker so we can check the attribute in common
-        # code
-        self.fields = None
+        # Initialize RH-instance marker if it's not set so we can check the
+        # attribute in common code
+        if not hasattr(self, 'fields'):
+            self.fields = None
 
     def get_patch_message(self, patch_id, suffix='mbox'):
         """
