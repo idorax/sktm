@@ -278,7 +278,7 @@ class pwresult(enum.IntEnum):
 
 class PatchworkProject(object):
     """Common code for all major versions and interfaces."""
-    def __init__(self, baseurl, project_name, skip):
+    def __init__(self, baseurl, project_name, skip, is_rh_fork=False):
         """
         Initialize attributes common for all Patchworks.
 
@@ -287,16 +287,15 @@ class PatchworkProject(object):
             project_name: Project's `linkname` in Patchwork.
             skip:         List of additional regex patterns to skip in patch
                           names, case insensitive.
+            is_rh_fork:   True if the instance is internal RH fork, False by
+                          default.
         """
         self.baseurl = baseurl
         self.project_id = self.get_project_id(project_name)
         patterns_to_skip = SKIP_PATTERNS + skip
         logging.debug('Patch subject patterns to skip: %s', patterns_to_skip)
         self.skip = re.compile('|'.join(patterns_to_skip), re.IGNORECASE)
-        # Initialize RH-instance marker if it's not set so we can check the
-        # attribute in common code
-        if not hasattr(self, 'fields'):
-            self.fields = None
+        self.is_rh_fork = is_rh_fork
 
     def get_patch_message(self, patch_id, suffix='mbox'):
         """
@@ -348,7 +347,7 @@ class PatchworkProject(object):
             A tuple of strings representing the value of requested headers
             from patch.
         """
-        if self.fields:
+        if self.is_rh_fork:
             mbox_email = self.get_patch_message(patch_id, 'mbox4')
         else:
             mbox_email = self.get_patch_message(patch_id)
@@ -822,7 +821,12 @@ class skt_patchwork(PatchworkProject):
         # A dictionary of series cover letter patch objects identified by
         # "series IDs", the same ones used in "series' above.
         self.covers = dict()
-        super(skt_patchwork, self).__init__(baseurl, projectname, skip)
+        super(skt_patchwork, self).__init__(
+            baseurl,
+            projectname,
+            skip,
+            is_rh_fork=True if self.fields else False
+        )
 
     # FIXME Just move this into __init__
     def get_rpc(self, baseurl):
@@ -912,7 +916,7 @@ class skt_patchwork(PatchworkProject):
             TODO document at least the fields we care about, Patchwork is not
             likely to document the deprecated XML RPC interface for us.
         """
-        if not self.fields:
+        if not self.is_rh_fork:
             patch = self.rpc.patch_get(pid)
         else:
             # internal RH only: special hook to get original subject line
@@ -938,7 +942,7 @@ class skt_patchwork(PatchworkProject):
         Returns:
             The list of patch XML RPC objects.
         """
-        if not self.fields:
+        if not self.is_rh_fork:
             patches = self.rpc.patch_list(filt)
             return patches
 
@@ -959,7 +963,7 @@ class skt_patchwork(PatchworkProject):
         Returns:
             The patch mbox URL suffix.
         """
-        if self.fields:
+        if self.is_rh_fork:
             return "/mbox4"
         else:
             return "/mbox"
