@@ -82,6 +82,8 @@ def setup_logging(verbose):
         format="[%(process)d] %(asctime)s %(levelname)8s   %(message)s"
     )
     logger.setLevel(logging.WARNING - (verbose * 10))
+    logging.getLogger('requests').setLevel(logging.WARNING)
+    logging.getLogger('urllib3').setLevel(logging.WARNING)
 
 
 def cmd_baseline(sw, cfg):
