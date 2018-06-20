@@ -356,6 +356,8 @@ class PatchworkProject(object):
 
         for key in keys:
             value = mbox_email.get_all(key, [''])
+            # Remove header folding
+            value = [re.sub(r'\r?\n[ \t]', ' ', val) for val in value]
             if len(value) == 1:
                 res += (value[0],)
             else:
