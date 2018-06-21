@@ -330,7 +330,35 @@ class PatchworkProject(object):
 
         return email.message_from_string(response.content)
 
-    def get_header_value(self, patch_id, *name_tuple):
+    def get_header_values_all(self, patch_id, *name_tuple):
+        """
+        Get all values (or empty strings) for specified headers from a patch
+        message.
+
+        Args:
+            patch_id:   ID of the patch to retrieve header values for.
+            name_tuple: An n-tuple of names of the headers which values should
+                        be retrieved.
+
+        Returns:
+            An n-tuple of string lists, representing all the values of the
+            specified headers from the patch message, with a list of a single
+            empty string for each missing header.
+        """
+        if self.is_rh_fork:
+            mbox_email = self.get_patch_message(patch_id, 'mbox4')
+        else:
+            mbox_email = self.get_patch_message(patch_id)
+
+        value_list_tuple = ()
+        for name in name_tuple:
+            # Get and unfold header values
+            value_list = [re.sub(r'\r?\n[ \t]', ' ', value)
+                          for value in mbox_email.get_all(name, [''])]
+            value_list_tuple += (value_list,)
+        return value_list_tuple
+
+    def get_header_values_first(self, patch_id, *name_tuple):
         """
         Get first values (or empty strings) of specified headers from a patch
         message.
@@ -345,19 +373,8 @@ class PatchworkProject(object):
             specified headers from the patch message, with empty strings
             returned for missing headers.
         """
-        if self.is_rh_fork:
-            mbox_email = self.get_patch_message(patch_id, 'mbox4')
-        else:
-            mbox_email = self.get_patch_message(patch_id)
-
-        res = ()
-
-        for name in name_tuple:
-            # Get first header value and unfold it
-            value = re.sub(r'\r?\n[ \t]', ' ', mbox_email.get(name, ''))
-            res.append(value)
-
-        return res
+        return (value_list[0] for value_list in
+                self.get_header_values_all(patch_id, *name_tuple))
 
     def get_emails(self, pid):
         """
@@ -371,7 +388,8 @@ class PatchworkProject(object):
         """
         logging.debug("getting emails for patch %d from 'from', 'to', 'cc'",
                       pid)
-        header_value_list = self.get_header_value(pid, "From", "To", "Cc")
+        header_value_list = \
+            self.get_header_values_first(pid, "From", "To", "Cc")
         email_set = set(addr_tuple[1]
                         for addr_tuple
                         in email.utils.getaddresses(header_value_list)
@@ -516,9 +534,10 @@ class skt_patchwork2(PatchworkProject):
                                  patch.get("name"))
                     continue
 
-                message_id, subject = self.get_header_value(patch.get("id"),
-                                                            'Message-ID',
-                                                            'Subject')
+                message_id, subject = \
+                    self.get_header_values_first(patch.get("id"),
+                                                 'Message-ID',
+                                                 'Subject')
                 emails = self.get_emails(patch.get("id"))
                 logging.debug("patch [%d] message_id: %s", patch.get("id"),
                               message_id)
@@ -1105,7 +1124,9 @@ class skt_patchwork(PatchworkProject):
                         patch = self.series[seriesid].get(cpatch)
                         pid = patch.get("id")
                         message_id, subject = \
-                            self.get_header_value(pid, 'Message-ID', 'Subject')
+                            self.get_header_values_first(pid,
+                                                         'Message-ID',
+                                                         'Subject')
                         emails = self.get_emails(pid)
                         self.log_patch(pid, patch.get("name"),
                                        message_id, emails)
@@ -1129,9 +1150,9 @@ class skt_patchwork(PatchworkProject):
                 return result
         # Else, it's a single patch
         else:
-            message_id, subject = self.get_header_value(pid,
-                                                        'Message-ID',
-                                                        'Subject')
+            message_id, subject = self.get_header_values_first(pid,
+                                                               'Message-ID',
+                                                               'Subject')
             emails = self.get_emails(pid)
             self.log_patch(pid, pname, message_id, emails)
             result = SeriesSummary()
