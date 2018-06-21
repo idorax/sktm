@@ -370,7 +370,7 @@ class PatchworkProject(object):
         Get all involved e-mail addresses from patch message headers.
 
         Args:
-            pid:    ID of the patch to get header values for.
+            pid:    ID of the patch to get e-mail addresses for.
 
         Returns:
             A set of e-mail addresses involved with the patch.
