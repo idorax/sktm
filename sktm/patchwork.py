@@ -330,17 +330,20 @@ class PatchworkProject(object):
 
         return email.message_from_string(response.content)
 
-    def get_header_value(self, patch_id, *keys):
+    def get_header_value(self, patch_id, *name_tuple):
         """
-        Get first values of requested message headers.
+        Get first values (or empty strings) of specified headers from a patch
+        message.
 
         Args:
-            patch_id: ID of the patch to retrieve header value for.
-            keys:     Keys of the headers which value should be retrieved.
+            patch_id:   ID of the patch to retrieve header values for.
+            name_tuple: An n-tuple of names of the headers which first values
+                        should be retrieved.
 
         Returns:
-            A tuple of strings representing the first values of requested
-            headers from patch.
+            An n-tuple of strings, representing the first values of the
+            specified headers from the patch message, with empty strings
+            returned for missing headers.
         """
         if self.is_rh_fork:
             mbox_email = self.get_patch_message(patch_id, 'mbox4')
@@ -349,9 +352,9 @@ class PatchworkProject(object):
 
         res = ()
 
-        for key in keys:
+        for name in name_tuple:
             # Get first header value and unfold it
-            value = re.sub(r'\r?\n[ \t]', ' ', mbox_email.get(key, ''))
+            value = re.sub(r'\r?\n[ \t]', ' ', mbox_email.get(name, ''))
             res.append(value)
 
         return res
