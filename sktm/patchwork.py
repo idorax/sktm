@@ -332,20 +332,15 @@ class PatchworkProject(object):
 
     def get_header_value(self, patch_id, *keys):
         """
-        Get the value(s) of requested message headers.
-
-        In case multiple headers with the same key are present (this is
-        relevant for eg. 'Received' header), concatenating the values with
-        double newlines as a divider (we shouldn't need headers which can be
-        present multiple times anyways).
+        Get first values of requested message headers.
 
         Args:
             patch_id: ID of the patch to retrieve header value for.
             keys:     Keys of the headers which value should be retrieved.
 
         Returns:
-            A tuple of strings representing the value of requested headers
-            from patch.
+            A tuple of strings representing the first values of requested
+            headers from patch.
         """
         if self.is_rh_fork:
             mbox_email = self.get_patch_message(patch_id, 'mbox4')
@@ -355,13 +350,9 @@ class PatchworkProject(object):
         res = ()
 
         for key in keys:
-            value = mbox_email.get_all(key, [''])
-            # Remove header folding
-            value = [re.sub(r'\r?\n[ \t]', ' ', val) for val in value]
-            if len(value) == 1:
-                res += (value[0],)
-            else:
-                res += ('\n\n'.join([val for val in value]),)
+            # Get first header value and unfold it
+            value = re.sub(r'\r?\n[ \t]', ' ', mbox_email.get(key, ''))
+            res.append(value)
 
         return res
 
