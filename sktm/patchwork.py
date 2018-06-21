@@ -386,14 +386,15 @@ class PatchworkProject(object):
         Returns:
             A set of e-mail addresses involved with the patch.
         """
+        email_set = set()
         logging.debug("getting emails for patch %d from 'from', 'to', 'cc'",
                       pid)
-        header_value_list = \
-            self.get_header_values_first(pid, "From", "To", "Cc")
-        email_set = set(addr_tuple[1]
-                        for addr_tuple
-                        in email.utils.getaddresses(header_value_list)
-                        if addr_tuple[1])
+        for header_value_list in \
+                self.get_header_values_all(pid, "From", "To", "Cc"):
+            email_set |= set(addr_tuple[1]
+                             for addr_tuple
+                             in email.utils.getaddresses(header_value_list)
+                             if addr_tuple[1])
         logging.debug("patch=%d; email_set=%s", pid, email_set)
 
         return email_set
