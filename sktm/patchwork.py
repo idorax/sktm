@@ -378,7 +378,8 @@ class PatchworkProject(object):
         emails = set()
         pattern = re.compile(r'\<([^\>]+)\>')
 
-        logging.debug("getting emails for patch %d from 'from', 'to', 'cc'")
+        logging.debug("getting emails for patch %d from 'from', 'to', 'cc'",
+                      pid)
         header_values = self.get_header_value(pid, "From", "To", "Cc")
         for header_value in header_values:
             for address in pattern.findall(header_value):
