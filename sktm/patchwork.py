@@ -43,7 +43,7 @@ SKIP_PATTERNS = [
 class ObjectSummary(object):
     """A summary of an mbox-based Patchwork object"""
 
-    def __init__(self, url, date=None, patch_id=None, mbox_sfx="/mbox"):
+    def __init__(self, url, date=None, patch_id=None, mbox_sfx="mbox"):
         """
         Initialize an object summary.
 
@@ -82,7 +82,7 @@ class ObjectSummary(object):
         Returns:
             URL pointing at the object's mbox.
         """
-        return self.url + self.mbox_sfx
+        return os.path.join(self.url, self.mbox_sfx)
 
 
 class SeriesSummary(object):
@@ -297,15 +297,12 @@ class PatchworkProject(object):
         self.skip = re.compile('|'.join(patterns_to_skip), re.IGNORECASE)
         self.is_rh_fork = is_rh_fork
 
-    def get_patch_message(self, patch_id, suffix='mbox'):
+    def get_patch_message(self, patch_id):
         """
         Retrieve patch's mbox as email object.
 
         Args:
             patch_id: The ID of the patch which mbox should be retrieved.
-            suffix:   URL suffix under which the mbox file is available. The
-                      distinction is needed by older RH-internal instance which
-                      exposes original mbox via /mbox4
 
         Returns:
             Email object created from the mbox file.
@@ -317,7 +314,10 @@ class PatchworkProject(object):
         """
         # Use os.path for manipulation with URL because urlparse can't deal
         # with URLs ending both with and without slash.
-        mbox_url = os.path.join(self.baseurl, 'patch', str(patch_id), suffix)
+        mbox_url = os.path.join(self.baseurl,
+                                'patch',
+                                str(patch_id),
+                                self._get_mbox_url_sfx())
 
         try:
             response = requests.get(mbox_url)
@@ -345,10 +345,7 @@ class PatchworkProject(object):
             specified headers from the patch message, with a list of a single
             empty string for each missing header.
         """
-        if self.is_rh_fork:
-            mbox_email = self.get_patch_message(patch_id, 'mbox4')
-        else:
-            mbox_email = self.get_patch_message(patch_id)
+        mbox_email = self.get_patch_message(patch_id)
 
         value_list_tuple = ()
         for name in name_tuple:
@@ -413,6 +410,19 @@ class PatchworkProject(object):
         # Use os.path for manipulation with URL because urlparse can't deal
         # with URLs ending both with and without slash.
         return os.path.join(self.baseurl, 'patch', str(patch.get('id')))
+
+    def _get_mbox_url_sfx(self):
+        """
+        Retrieve the string which needs to be added to a patch URL to make an
+        mbox URL.
+
+        Returns:
+            The patch mbox URL suffix.
+        """
+        if self.is_rh_fork:
+            return "mbox4"
+        else:
+            return "mbox"
 
 
 class skt_patchwork2(PatchworkProject):
@@ -970,19 +980,6 @@ class skt_patchwork(PatchworkProject):
 
         return patches
 
-    def __get_mbox_url_sfx(self):
-        """
-        Retrieve the string which needs to be added to a patch URL to make an
-        mbox URL.
-
-        Returns:
-            The patch mbox URL suffix.
-        """
-        if self.is_rh_fork:
-            return "/mbox4"
-        else:
-            return "/mbox"
-
     def set_patch_check(self, pid, jurl, result):
         """
         Add a patch "check" for the specified patch, with the specified
@@ -1118,7 +1115,7 @@ class skt_patchwork(PatchworkProject):
                             ObjectSummary(self.get_patch_url(cover),
                                           cover.get("date").replace(" ", "T"),
                                           cover.get("id"),
-                                          self.__get_mbox_url_sfx()))
+                                          self._get_mbox_url_sfx()))
 
                     # For each patch position in series in order
                     for cpatch in sorted(self.series[seriesid].keys()):
@@ -1137,7 +1134,7 @@ class skt_patchwork(PatchworkProject):
                         result.add_patch(
                             ObjectSummary(self.get_patch_url(patch),
                                           patch.get("date").replace(" ", "T"),
-                                          pid, self.__get_mbox_url_sfx()))
+                                          pid, self._get_mbox_url_sfx()))
 
                     logging.info("message_id: %s", result.message_id)
                     logging.info("subject: %s", result.subject)
@@ -1164,7 +1161,7 @@ class skt_patchwork(PatchworkProject):
                 ObjectSummary(self.get_patch_url(patch),
                               patch.get("date").replace(" ", "T"),
                               pid,
-                              self.__get_mbox_url_sfx())
+                              self._get_mbox_url_sfx())
             )
 
         if pid > self.lastpatch:
