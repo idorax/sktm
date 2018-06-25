@@ -47,6 +47,7 @@ class TestObjectSummary(unittest.TestCase):
         self.test_url = 'http://example.com/patch/2'
         self.testobj = patchwork.ObjectSummary(
             url=self.test_url,
+            mbox_sfx='mbox',
             date='2018-06-04',
             patch_id=1
         )
@@ -136,7 +137,7 @@ class TestSeriesSummary(unittest.TestCase):
 
     def test_get_patch_info_list(self):
         """Ensure get_patch_info_list() makes a list of tuples."""
-        patch_data = patchwork.ObjectSummary('url', '2018-06-04', '1')
+        patch_data = patchwork.ObjectSummary('url', 'mbox', '2018-06-04', '1')
         self.testobj.add_patch(patch_data)
 
         result = self.testobj.get_patch_info_list()
@@ -145,7 +146,7 @@ class TestSeriesSummary(unittest.TestCase):
 
     def test_get_patch_url_list(self):
         """Ensure get_patch_url_list() returns a list of patch URLs."""
-        patch_data = patchwork.ObjectSummary('url', '2018-06-04', '1')
+        patch_data = patchwork.ObjectSummary('url', 'mbox', '2018-06-04', '1')
         self.testobj.add_patch(patch_data)
 
         result = self.testobj.get_patch_url_list()
@@ -154,7 +155,7 @@ class TestSeriesSummary(unittest.TestCase):
 
     def test_get_patch_mbox_url_list(self):
         """Ensure get_patch_mbox_url_list() returns a list of patch URLs."""
-        patch_data = patchwork.ObjectSummary('url', '2018-06-04', '1')
+        patch_data = patchwork.ObjectSummary('url', 'mbox', '2018-06-04', '1')
         self.testobj.add_patch(patch_data)
 
         result = self.testobj.get_patch_mbox_url_list()

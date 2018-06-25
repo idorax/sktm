@@ -43,7 +43,7 @@ SKIP_PATTERNS = [
 class ObjectSummary(object):
     """A summary of an mbox-based Patchwork object"""
 
-    def __init__(self, url, date=None, patch_id=None, mbox_sfx="mbox"):
+    def __init__(self, url, mbox_sfx, date=None, patch_id=None):
         """
         Initialize an object summary.
 
@@ -59,12 +59,12 @@ class ObjectSummary(object):
         """
         # User-facing Patchwork object URL
         self.url = url
+        # Mbox URL suffix
+        self.mbox_sfx = mbox_sfx
         # "Date" header value
         self.date = date
         # Patchwork patch ID for patch objects
         self.patch_id = patch_id
-        # Mbox URL suffix
-        self.mbox_sfx = mbox_sfx
 
     def is_patch(self):
         """
@@ -530,7 +530,10 @@ class skt_patchwork2(PatchworkProject):
                 match = re.match("^(.*)/mbox/?$", cover.get("mbox", ""))
                 if match:
                     series_summary.set_cover_letter(
-                        ObjectSummary(match.group(1), cover.get("date")))
+                        ObjectSummary(match.group(1),
+                                      self._get_mbox_url_sfx(),
+                                      cover.get("date"))
+                    )
 
             logging.info("series [%d] %s", series.get("id"),
                          series.get("name"))
@@ -561,7 +564,10 @@ class skt_patchwork2(PatchworkProject):
                 series_summary.merge_email_addr_set(emails)
                 series_summary.add_patch(
                     ObjectSummary(self.get_patch_url(patch),
-                                  patch.get("date"), patch.get("id")))
+                                  self._get_mbox_url_sfx(),
+                                  patch.get("date"),
+                                  patch.get("id"))
+                )
             logging.info("---")
 
             if not series_summary.is_empty():
@@ -1113,9 +1119,10 @@ class skt_patchwork(PatchworkProject):
                     if cover:
                         result.set_cover_letter(
                             ObjectSummary(self.get_patch_url(cover),
+                                          self._get_mbox_url_sfx(),
                                           cover.get("date").replace(" ", "T"),
-                                          cover.get("id"),
-                                          self._get_mbox_url_sfx()))
+                                          cover.get("id"))
+                        )
 
                     # For each patch position in series in order
                     for cpatch in sorted(self.series[seriesid].keys()):
@@ -1133,8 +1140,10 @@ class skt_patchwork(PatchworkProject):
                         result.merge_email_addr_set(emails)
                         result.add_patch(
                             ObjectSummary(self.get_patch_url(patch),
+                                          self._get_mbox_url_sfx(),
                                           patch.get("date").replace(" ", "T"),
-                                          pid, self._get_mbox_url_sfx()))
+                                          pid)
+                        )
 
                     logging.info("message_id: %s", result.message_id)
                     logging.info("subject: %s", result.subject)
@@ -1159,9 +1168,9 @@ class skt_patchwork(PatchworkProject):
             result.merge_email_addr_set(emails)
             result.add_patch(
                 ObjectSummary(self.get_patch_url(patch),
+                              self._get_mbox_url_sfx(),
                               patch.get("date").replace(" ", "T"),
-                              pid,
-                              self._get_mbox_url_sfx())
+                              pid)
             )
 
         if pid > self.lastpatch:
