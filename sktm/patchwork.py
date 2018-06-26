@@ -24,7 +24,6 @@ import urllib
 import xmlrpclib
 
 import dateutil.parser
-import enum
 import requests
 
 import sktm
@@ -38,6 +37,11 @@ SKIP_PATTERNS = [
     r"\[[^\]]*pull.*?\]",
     r"pull.?request"
 ]
+
+PW_CHECK_CHOICES = {'pending': 0,
+                    'success': 1,
+                    'warning': 2,
+                    'fail': 3}
 
 
 class ObjectSummary(object):
@@ -266,14 +270,6 @@ class RpcWrapper:
     def __getattr__(self, name):
         # Add the RPC version checking call/return wrappers
         return self._return_unwrapper(self._wrap_call(self.rpc, name))
-
-
-class pwresult(enum.IntEnum):
-    """Patchwork state codes"""
-    PENDING = 0
-    SUCCESS = 1
-    WARNING = 2
-    FAILURE = 3
 
 
 class PatchworkProject(object):
@@ -677,13 +673,13 @@ class skt_patchwork2(PatchworkProject):
                    'context': 'skt',
                    'description': 'skt boot test'}
         if result == sktm.tresult.SUCCESS:
-            payload['state'] = int(pwresult.SUCCESS)
+            payload['state'] = PW_CHECK_CHOICES['success']
         elif result == sktm.tresult.BASELINE_FAILURE:
-            payload['state'] = int(pwresult.WARNING)
+            payload['state'] = PW_CHECK_CHOICES['warning']
             payload['description'] = 'Baseline failure found while testing '
             'this patch'
         else:
-            payload['state'] = int(pwresult.FAILURE)
+            payload['state'] = PW_CHECK_CHOICES['fail']
             payload['description'] = str(result)
 
         self._set_patch_check(self.get_patch_by_id(pid), payload)
