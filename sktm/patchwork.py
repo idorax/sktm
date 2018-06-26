@@ -459,12 +459,12 @@ class skt_patchwork2(PatchworkProject):
         Returns:
             Integer representing project's ID.
         """
-        req = requests.get("%s/%s" % (self.apiurls.get("projects"),
-                                      project_name))
-        if req.status_code != requests.codes.ok:
+        response = requests.get("%s/%s" % (self.apiurls.get("projects"),
+                                           project_name))
+        if response.status_code != requests.codes.ok:
             raise Exception("Can't get project data: %s %d" %
-                            (project_name, req.status_code))
-        return req.json().get('id')
+                            (project_name, response.status_code))
+        return response.json().get('id')
 
     def get_apiurls(self, baseurl):
         """
@@ -474,11 +474,11 @@ class skt_patchwork2(PatchworkProject):
         Returns:
             The JSON representation of the API URLs.
         """
-        r = requests.get("%s/api" % baseurl)
-        if r.status_code != 200:
-            raise Exception("Can't get apiurls: %d" % r.status_code)
+        response = requests.get("%s/api" % baseurl)
+        if response.status_code != 200:
+            raise Exception("Can't get apiurls: %d" % response.status_code)
 
-        return r.json()
+        return response.json()
 
     def get_series_from_url(self, url):
         """
@@ -496,13 +496,13 @@ class skt_patchwork2(PatchworkProject):
         series_list = list()
 
         logging.debug("get_series_from_url %s", url)
-        r = requests.get(url)
+        response = requests.get(url)
 
-        if r.status_code != 200:
+        if response.status_code != 200:
             raise Exception("Can't get series from url %s (%d)" %
-                            (url, r.status_code))
+                            (url, response.status_code))
 
-        sdata = r.json()
+        sdata = response.json()
         # If there is a single series returned we get a dict, not a list with
         # a single element. Fix this inconsistency for easier processing.
         if not isinstance(sdata, list):
@@ -575,7 +575,7 @@ class skt_patchwork2(PatchworkProject):
                               series_summary.email_addr_set)
                 series_list.append(series_summary)
 
-        link = r.headers.get("Link")
+        link = response.headers.get("Link")
         if link is not None:
             m = re.match("<(.*)>; rel=\"next\"", link)
             if m:
@@ -600,13 +600,13 @@ class skt_patchwork2(PatchworkProject):
         series_list = list()
 
         logging.debug("get_patchsets_from_events: %s", url)
-        r = requests.get(url)
+        response = requests.get(url)
 
-        if r.status_code != 200:
+        if response.status_code != 200:
             raise Exception("Can't get events from url %s (%d)" %
-                            (url, r.status_code))
+                            (url, response.status_code))
 
-        edata = r.json()
+        edata = response.json()
         # If there is a single event returned we get a dict, not a list with
         # a single element. Fix this inconsistency for easier processing.
         if not isinstance(edata, list):
@@ -625,7 +625,7 @@ class skt_patchwork2(PatchworkProject):
 
             series_list += self.get_series_from_url(series.get("url"))
 
-        link = r.headers.get("Link")
+        link = response.headers.get("Link")
         if link is not None:
             m = re.match("<(.*)>; rel=\"next\"", link)
             if m:
@@ -644,13 +644,16 @@ class skt_patchwork2(PatchworkProject):
             patch:      JSON representation of a patch to add the check for.
             payload:    The "check" payload dictionary to be converted to JSON.
         """
-        r = requests.post(patch.get("checks"),
-                          headers={"Authorization": "Token %s" % self.apikey,
-                                   "Content-Type": "application/json"},
-                          data=json.dumps(payload))
+        response = requests.post(
+            patch.get("checks"),
+            headers={"Authorization": "Token %s" % self.apikey,
+                     "Content-Type": "application/json"},
+            data=json.dumps(payload)
+        )
 
-        if r.status_code not in [200, 201]:
-            logging.warning("Failed to post patch check: %d" % r.status_code)
+        if response.status_code not in [200, 201]:
+            logging.warning("Failed to post patch check: %d",
+                            response.status_code)
 
     def set_patch_check(self, pid, jurl, result):
         """
@@ -696,13 +699,13 @@ class skt_patchwork2(PatchworkProject):
             set of supported attributes depends on which API versions are
             supported by a specific Patchwork instance.
         """
-        r = requests.get("%s/%d" % (self.apiurls.get("patches"), pid))
+        response = requests.get("%s/%d" % (self.apiurls.get("patches"), pid))
 
-        if r.status_code != 200:
+        if response.status_code != 200:
             raise Exception("Can't get patch by id %d (%d)" %
-                            (pid, r.status_code))
+                            (pid, response.status_code))
 
-        return r.json()
+        return response.json()
 
     def get_patchsets_by_patch(self, url, seen=set()):
         """
@@ -722,13 +725,13 @@ class skt_patchwork2(PatchworkProject):
         series_list = list()
 
         logging.debug("get_patchsets_by_patch %s", url)
-        r = requests.get(url)
+        response = requests.get(url)
 
-        if r.status_code != 200:
+        if response.status_code != 200:
             raise Exception("Can't get series from url %s (%d)" %
-                            (url, r.status_code))
+                            (url, response.status_code))
 
-        pdata = r.json()
+        pdata = response.json()
         # If there is a single patch returned we get a dict, not a list with
         # a single element. Fix this inconsistency for easier processing.
         if type(pdata) is not list:
@@ -747,7 +750,7 @@ class skt_patchwork2(PatchworkProject):
                     ))
                     seen.add(sid)
 
-        link = r.headers.get("Link")
+        link = response.headers.get("Link")
         if link:
             m = re.match("<(.*)>; rel=\"next\"", link)
             if m:
