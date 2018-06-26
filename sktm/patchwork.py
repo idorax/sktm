@@ -417,8 +417,8 @@ class PatchworkProject(object):
         """
         if self.is_rh_fork:
             return "mbox4"
-        else:
-            return "mbox"
+
+        return "mbox"
 
 
 class skt_patchwork2(PatchworkProject):
