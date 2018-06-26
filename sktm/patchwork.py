@@ -239,7 +239,7 @@ def stringify(value):
 
 # Internal RH PatchWork adds a magic API version with each call
 # this class just magically adds/removes it
-class RpcWrapper:
+class RpcWrapper(object):
     def __init__(self, real_rpc):
         self.rpc = real_rpc
         # patchwork api coded to
