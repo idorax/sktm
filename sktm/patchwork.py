@@ -237,16 +237,18 @@ def stringify(value):
     return str(value)
 
 
-# Internal RH PatchWork adds a magic API version with each call
-# this class just magically adds/removes it
 class RpcWrapper(object):
+    """
+    XMLRPC object wrapper removing magic API version which is added by RH
+    Patchwork fork.
+    """
     def __init__(self, real_rpc):
         self.rpc = real_rpc
-        # patchwork api coded to
+        # RH-Patchwork API version
         self.version = 1010
 
     def _wrap_call(self, rpc, name):
-        # Wrap a RPC call, adding the expected version number as argument
+        """Wrap a RPC call, adding the expected version number as argument."""
         function = getattr(rpc, name)
 
         def wrapper(*args, **kwargs):
@@ -254,7 +256,7 @@ class RpcWrapper(object):
         return wrapper
 
     def _return_check(self, returned):
-        # Returns just the real return value, without the version info.
+        """Returns the real return value without the version info."""
         version = self.version
         if returned[0] != version:
             raise Exception('Patchwork API mismatch (%i, expected %i)' %
@@ -267,7 +269,7 @@ class RpcWrapper(object):
         return unwrap
 
     def __getattr__(self, name):
-        # Add the RPC version checking call/return wrappers
+        """Add the RPC version checking call/return wrappers."""
         return self._return_unwrapper(self._wrap_call(self.rpc, name))
 
 
