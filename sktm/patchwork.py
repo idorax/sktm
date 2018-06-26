@@ -670,8 +670,8 @@ class skt_patchwork2(PatchworkProject):
         payload = {'patch': pid,
                    'state': None,
                    'target_url': jurl,
-                   'context': 'skt',
-                   'description': 'skt boot test'}
+                   'context': 'Kernel CI',
+                   'description': 'Kernel CI testing'}
         if result == sktm.tresult.SUCCESS:
             payload['state'] = PW_CHECK_CHOICES['success']
         elif result == sktm.tresult.BASELINE_FAILURE:
