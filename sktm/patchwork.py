@@ -224,17 +224,17 @@ class SeriesSummary(object):
 # TODO Move common code to a common parent class
 
 
-def stringify(v):
+def stringify(value):
     """Convert any value to a str object
 
     xmlrpc is not consistent: sometimes the same field
     is returned a str, sometimes as unicode. We need to
     handle both cases properly.
     """
-    if isinstance(v, unicode):
-        return v.encode('utf-8')
+    if isinstance(value, unicode):
+        return value.encode('utf-8')
 
-    return str(v)
+    return str(value)
 
 
 # Internal RH PatchWork adds a magic API version with each call
