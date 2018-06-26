@@ -247,24 +247,23 @@ class RpcWrapper:
 
     def _wrap_call(self, rpc, name):
         # Wrap a RPC call, adding the expected version number as argument
-        fn = getattr(rpc, name)
+        function = getattr(rpc, name)
 
         def wrapper(*args, **kwargs):
-            return fn(self.version, *args, **kwargs)
+            return function(self.version, *args, **kwargs)
         return wrapper
 
-    def _return_check(self, r):
+    def _return_check(self, returned):
         # Returns just the real return value, without the version info.
-        v = self.version
-        if r[0] != v:
-            raise Exception(
-                'Patchwork API mismatch (%i, expected %i)' % (r[0], v)
-            )
-        return r[1]
+        version = self.version
+        if returned[0] != version:
+            raise Exception('Patchwork API mismatch (%i, expected %i)' %
+                            (returned[0], version))
+        return returned[1]
 
-    def _return_unwrapper(self, fn):
+    def _return_unwrapper(self, function):
         def unwrap(*args, **kwargs):
-            return self._return_check(fn(*args, **kwargs))
+            return self._return_check(function(*args, **kwargs))
         return unwrap
 
     def __getattr__(self, name):
