@@ -153,7 +153,7 @@ class SeriesSummary(object):
         Returns:
             True if the series summary is empty, False otherwise.
         """
-        return len(self.patch_list) == 0
+        return not self.patch_list
 
     def __get_obj_list(self):
         """
