@@ -73,7 +73,7 @@ class ObjectSummary(object):
         Returns:
             True if the object is a patch object, False if not.
         """
-        return not not self.patch_id
+        return bool(self.patch_id)
 
     def get_mbox_url(self):
         """
