@@ -1,16 +1,14 @@
 language: python
 python:
     - "2.7"
+env:
+    - TOX_ENV=py27,flake8,pylint
 install:
     - pip install -U pip
     - pip install -r requirements.txt
     - pip install -r test-requirements.txt
+    - pip install tox
 script:
     # Make sure all Python files are loadable
     - find -name '*.py' | xargs -l1 -IFILE python -c 'import imp; imp.load_source("", "FILE")'
-    # Check coding style
-    - flake8 --show-source .
-    - pylint tests
-    - coverage run --source=sktm,tests -m pytest -v -s .
-    - coverage report -m --omit="*/tests*"
-    - coveralls
+    - tox -e $TOX_ENV
