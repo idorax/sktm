@@ -4,9 +4,8 @@ python:
 env:
     - TOX_ENV=py27,flake8,pylint
 install:
-    - pip install -U pip
-    - pip install -r requirements.txt
-    - pip install -r test-requirements.txt
-    - pip install tox
+    # Install sktm using pip to ensure dependencies are downloaded correctly.
+    - pip install .
+    - pip install coveralls tox
 script:
     - tox -e $TOX_ENV

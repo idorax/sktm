@@ -69,6 +69,11 @@ Install Kerberos client to enable `skt` authentication to Beaker:
 Install `skt` dependencies following its
 [README.md](https://github.com/RH-FMK/skt).
 
+Installation
+------------
+
+    pip install git+https://github.com/RH-FMK/sktm
+
 Setup
 -----
 
@@ -251,12 +256,6 @@ Create the `~/.sktmrc` file telling sktm how to access Jenkins:
     jpass = sesame
     EOF
 
-Clone sktm with Git, or simply download and unpack the latest "master" branch
-archive. After that, you will be able to run the `sktm.py` executable
-directly. The examples below assume you run it while being in the source root
-directory, but any directory will do as long as the path to `sktm.py` is
-correct.
-
 Usage
 -----
 On the first execution sktm creates a database file (`~/.sktm.db` by default),
@@ -268,7 +267,7 @@ the execution of Jenkins jobs sktm submits.
 Before beginning testing a kernel branch, you need to establish a working
 "baseline" commit, the patches would be applied on:
 
-    ./sktm.py -v --jjname <JENKINS_PROJECT> baseline <GIT_REPO_URL> <GIT_REF>
+    sktm -v --jjname <JENKINS_PROJECT> baseline <GIT_REPO_URL> <GIT_REF>
 
 Here, `<JENKINS_PROJECT>` would be the name of the Jenkins project running
 skt, `<GIT_REPO_URL>` would be a kernel Git repository URL, and `<GIT_REF>`
@@ -278,15 +277,15 @@ locating a stable "baseline" commit, and usually will be a branch name.
 E.g., following our setup example above, this command would find a baseline
 commit in the current "scsi" tree:
 
-    ./sktm.py -v --jjname sktm baseline \
-              git://git.kernel.org/pub/scm/linux/kernel/git/mkp/scsi.git \
-              for-next
+    sktm -v --jjname sktm baseline \
+         git://git.kernel.org/pub/scm/linux/kernel/git/mkp/scsi.git \
+         for-next
 
 And this would do the same for the "net-next" tree:
 
-    ./sktm.py -v --jjname sktm baseline \
-              git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git \
-              master
+    sktm -v --jjname sktm baseline \
+         git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git \
+         master
 
 You will need to run the "baseline" command periodically to have your baseline
 commits up-to-date, to allow newer patches to apply.
@@ -300,19 +299,19 @@ different commands for Patchwork v1 and v2 instances.
 
 For Patchwork v1 run:
 
-    ./sktm.py -v --jjname <JENKINS_PROJECT> patchwork \
-              <GIT_REPO_URL> \
-              <PATCHWORK_BASE_URL> <PATCHWORK_PROJECT> \
-              --lastpatch <PATCHWORK_PATCH_ID> \
-              --skip <PATTERN> [... <PATTERN>]
+    sktm -v --jjname <JENKINS_PROJECT> patchwork \
+         <GIT_REPO_URL> \
+         <PATCHWORK_BASE_URL> <PATCHWORK_PROJECT> \
+         --lastpatch <PATCHWORK_PATCH_ID> \
+         --skip <PATTERN> [... <PATTERN>]
 
 and for Patchwork v2 run:
 
-    ./sktm.py -v --jjname <JENKINS_PROJECT> patchwork \
-              <GIT_REPO_URL> \
-              --restapi <PATCHWORK_BASE_URL> <PATCHWORK_PROJECT> \
-              --lastpatch <PATCHWORK_TIMESTAMP> \
-              --skip <PATTERN> [... <PATTERN>]
+    sktm -v --jjname <JENKINS_PROJECT> patchwork \
+         <GIT_REPO_URL> \
+         --restapi <PATCHWORK_BASE_URL> <PATCHWORK_PROJECT> \
+         --lastpatch <PATCHWORK_TIMESTAMP> \
+         --skip <PATTERN> [... <PATTERN>]
 
 Here, `<PATCHWORK_BASE_URL>` would be the base URL of the Patchwork instance,
 `<PATCHWORK_PROJECT>` - the name of the Patchwork project to check for new
@@ -332,18 +331,18 @@ E.g. this command would test all patches after the one with ID 10363835, from
 the "scsi" tree's Patchwork v1 instance, applying them onto the latest
 baseline commit from the corresponding Git repo:
 
-    ./sktm.py -v --jjname sktm patchwork \
-              git://git.kernel.org/pub/scm/linux/kernel/git/mkp/scsi.git \
-              https://patchwork.kernel.org linux-scsi \
-              --lastpatch 10363835
+    sktm -v --jjname sktm patchwork \
+         git://git.kernel.org/pub/scm/linux/kernel/git/mkp/scsi.git \
+         https://patchwork.kernel.org linux-scsi \
+         --lastpatch 10363835
 
 And this one would test all patches received by the "next-next" tree's
 Patchwork v2 instance after `Thu,  3 May 2018 14:35:00 +0100` timestamp:
 
-    ./sktm.py -v --jjname sktm patchwork \
-              git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git \
-              --restapi https://patchwork.ozlabs.org netdev \
-              --lastpatch 'Thu,  3 May 2018 14:35:00 +0100'
+    sktm -v --jjname sktm patchwork \
+         git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git \
+         --restapi https://patchwork.ozlabs.org netdev \
+         --lastpatch 'Thu,  3 May 2018 14:35:00 +0100'
 
 Note: do not run the commands above with the `--lastpatch` option value
 intact, as that would likely result in a lot of Jenkins jobs submitted,
@@ -373,6 +372,29 @@ For example, if the database path is `.sktm.db` and migration `01-pending.sql`
 is being applied, the command will be
 
     sqlite3 ~/.sktm.db < 01-pending.sql
+
+Developer Guide
+---------------
+
+Developers can test changes to `sktm` by using "development mode" from python's
+`setuptools` package. First, `cd` to the directory where `sktm` is cloned and
+run:
+
+    pip install --user -e .
+
+This installs `sktm` in a mode where any changes within the repo are
+immediately available simply by running `sktm`. There is no need to repeatedly
+run `pip install .` after each change.
+
+Using a virtual environment is highly recommended. This keeps `sktm` and all
+its dependencies in a separate Python environment. Developers can build a
+virtual environment for sktm quickly:
+
+    virtualenv ~/sktm-venv/
+    source ~/sktm-venv/bin/activate
+    pip install -e .
+
+To deactivate the virtual environment, simply run `deactivate`.
 
 
 License

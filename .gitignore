@@ -4,3 +4,4 @@
 *.swo
 .tox/
 .coverage
+sktm.egg-info
