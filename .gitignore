@@ -5,3 +5,4 @@
 .tox/
 .coverage
 sktm.egg-info
+.pytest_cache
