@@ -3,3 +3,4 @@ include LICENSE
 include sktm/*
 include tests/*
 include db_migrations/*
+include templates/*

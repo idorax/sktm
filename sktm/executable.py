@@ -22,6 +22,16 @@ import sktm
 import sktm.jenkins
 
 
+DEFAULT_REPORT_INTRO = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)),
+    '../templates/report.header'
+)
+DEFAULT_REPORT_FOOTER = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)),
+    '../templates/report.footer'
+)
+
+
 def setup_parser():
     """
     Create an sktm command line parser.
@@ -41,6 +51,46 @@ def setup_parser():
     parser.add_argument("--jjname", help="Jenkins job name")
     parser.add_argument("--makeopts", help="Specify options for make")
     parser.add_argument("--cfgurl", type=str, help="Kernel config URL")
+
+    # Reporting-related arguments
+    parser.add_argument(
+        '--mail-to',
+        action='append',
+        default=[],
+        type=str,
+        help='Email address to send the report to (on top of recipients '
+        'grabbed from original patch headers, if applicable). Can be specified'
+        ' more times'
+    )
+    parser.add_argument(
+        '--mail-from',
+        type=str,
+        help='Report\'s sender, as will appear on the "From" line'
+    )
+    parser.add_argument(
+        '--report-intro',
+        type=str,
+        help='Path to file containing the report introduction, defaults to '
+        'templates/report.header'
+    )
+    parser.add_argument(
+        '--report-footer',
+        type=str,
+        help='Path to file containing the report introduction, defaults to '
+        'templates/report.header'
+    )
+    parser.add_argument(
+        '--mail-header',
+        action='append',
+        default=[],
+        type=str,
+        help='Header to add to the report in format "Key: Value". Can be '
+        'specified more times'
+    )
+    parser.add_argument('--smtp-url',
+                        type=str,
+                        help='Use SMTP URL instead of localhost to send mail')
+
     subparsers = parser.add_subparsers()
 
     parser_baseline = subparsers.add_parser("baseline")
@@ -67,6 +117,13 @@ def setup_parser():
 
     parser_testinfo = subparsers.add_parser("testinfo")
     parser_testinfo.set_defaults(func=cmd_testinfo)
+
+    # Standalone reporting of already finished testing
+    parser_report = subparsers.add_parser('report')
+    parser_report.add_argument('--assets',
+                               type=str,
+                               help='Directory of assets to report.')
+    parser_report.set_defaults(func=cmd_report)
 
     return parser
 
@@ -108,6 +165,10 @@ def cmd_testinfo(sw, cfg):
     db.dump_baserepo_info()
 
 
+def cmd_report(sw, cfg):
+    pass
+
+
 def load_config(args):
     config = ConfigParser.ConfigParser()
     config.read(os.path.expanduser(args.rc))
@@ -117,6 +178,15 @@ def load_config(args):
         for (name, value) in config.items('config'):
             if name not in cfg or cfg.get(name) is None:
                 cfg[name] = value
+
+    if not cfg.get('report_intro'):
+        cfg['report_intro'] = DEFAULT_REPORT_INTRO
+    else:
+        cfg['report_intro'] = os.path.abspath(cfg['report_intro'])
+    if not cfg.get('report_footer'):
+        cfg['report_footer'] = DEFAULT_REPORT_FOOTER
+    else:
+        cfg['report_footer'] = os.path.abspath(cfg['report_footer'])
 
     return cfg
 
