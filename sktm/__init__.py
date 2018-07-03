@@ -25,6 +25,24 @@ import sktm.jenkins
 import sktm.patchwork
 
 
+def join_with_slash(base, *suffix):
+    """
+    Join parts of URL or path by slashes
+
+    Args:
+        base:    Base URL or path.
+        *suffix: Array of suffixes
+
+    Returns:
+           The URL or path string
+    """
+    parts = [base.rstrip('/')]
+    for arg in suffix:
+        parts.append(arg.strip('/'))
+    ending = '/' if arg.endswith('/') else ''
+    return '/'.join(parts) + ending
+
+
 class tresult(enum.IntEnum):
     """Test result"""
     SUCCESS = 0

@@ -220,8 +220,10 @@ class skt_jenkins(object):
                                        "baseretcode", 0)
 
     def get_result_url(self, jobname, buildid):
-        return "%s/job/%s/%s" % (self.server.base_server_url(), jobname,
-                                 buildid)
+        return sktm.join_with_slash(self.server.base_server_url(),
+                                    "job",
+                                    jobname,
+                                    str(buildid))
 
     def get_result(self, jobname, buildid):
         """
