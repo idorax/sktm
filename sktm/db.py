@@ -57,7 +57,6 @@ class SktDb(object):
                   url TEXT,
                   date TEXT,
                   patchsource_id INTEGER,
-                  series_id INTEGER,
                   FOREIGN KEY(patchsource_id) REFERENCES patchsource(id)
                 );
 
@@ -481,16 +480,14 @@ class SktDb(object):
                              (testrun_id, commithash, baserepo_id))
             self.conn.commit()
 
-    def commit_tested(self, patches, series=None):
+    def commit_tested(self, patches):
         """Saved tested patches.
 
         Args:
             patches:    List of patches that were tested
-            series:     Series ID from patchwork.
-
         """
         logging.debug("commit_tested: patches=%d", len(patches))
-        self.commit_series(patches, series)
+        self.commit_series(patches)
 
         for (patch_id, patch_name, patch_url, baseurl, project_id,
              patch_date) in patches:
@@ -513,53 +510,36 @@ class SktDb(object):
         self.conn.commit()
         return self.cur.lastrowid
 
-    def commit_patch(self, patch_id, patch_name, patch_url, series_id,
-                     baseurl, project_id, patch_date):
+    def commit_patch(self, patch_id, patch_name, patch_url, baseurl,
+                     project_id, patch_date):
         """Create/update a patch record in the database.
 
         Args:
             patch_id:       Patch ID.
             patch_name:     Patch name (subject line).
             patch_url:      URL to the patch in Patchwork.
-            series_id:      The ID of the series that contains the patch.
             baseurl:        URL of the git repo.
             project_id:     ID of the project in Patchwork.
             patch_date:     Timestamp.
 
         """
         # pylint: disable=too-many-arguments
-        logging.debug("commit_patch: pid=%s; sid=%s", patch_id, series_id)
+        logging.debug("commit_patch: pid=%s", patch_id)
         source_id = self.get_sourceid(baseurl, project_id)
         self.cur.execute('INSERT OR REPLACE INTO patch(id, name, url, '
-                         'patchsource_id, series_id, date) '
-                         'VALUES(?,?,?,?,?,?)',
+                         'patchsource_id, date) '
+                         'VALUES(?,?,?,?,?)',
                          (patch_id, patch_name, patch_url, source_id,
-                          series_id, patch_date))
+                          patch_date))
         self.conn.commit()
 
-    def commit_series(self, patches, series_id=None):
+    def commit_series(self, patches):
         """Create patch records for a list of patches.
 
         Args:
             patches:    List of patches to insert into the database.
-            series_id:  Series ID from patchwork that contains the patches.
-
         """
-        logging.debug("commit_series: %s (%s)", patches, series_id)
-
-        if series_id is None:
-
-            # Set a starting series_id in case the database is empty
-            series_id = 1
-
-            # Find the last series_id in the database
-            self.cur.execute('SELECT series_id FROM patch '
-                             'ORDER BY series_id DESC LIMIT 1')
-            result = self.cur.fetchone()
-
-            # Set the series_id to the next id
-            if result:
-                series_id = 1 + result[0]
+        logging.debug("commit_series: %s", patches)
 
         for (patch_id, patch_name, patch_url, baseurl, project_id,
              patch_date) in patches:
@@ -567,12 +547,10 @@ class SktDb(object):
             self.get_sourceid(baseurl, project_id)
 
             # Add the patches to the database
-            self.commit_patch(patch_id, patch_name, patch_url, series_id,
-                              baseurl, project_id, patch_date)
+            self.commit_patch(patch_id, patch_name, patch_url, baseurl,
+                              project_id, patch_date)
 
         self.conn.commit()
-
-        return series_id
 
     def dump_baseline_tests(self):  # pragma: no cover
         """Dump all of the current baseline tests from the database."""

@@ -49,13 +49,13 @@ class TestDb(unittest.TestCase):  # pylint: disable=too-many-public-methods
         """Ensure commit_patch() creates/updates a patch record."""
         testdb = SktDb(self.database_file)
         mock_get_sourceid.return_value = '1'
-        testdb.commit_patch('1', '2', '3', '4', '5', '6', '7')
+        testdb.commit_patch('1', '2', '3', '4', '5', '6')
 
         # Check if we have a proper INSERT query executed
         execute_call_args = mock_sql.connect().cursor().execute.call_args[0]
         self.assertIn('INSERT OR REPLACE INTO patch', execute_call_args[0])
         self.assertTupleEqual(
-            ('1', '2', '3', '1', '4', '7'),
+            ('1', '2', '3', '1', '6'),
             execute_call_args[1]
         )
 
@@ -68,9 +68,9 @@ class TestDb(unittest.TestCase):  # pylint: disable=too-many-public-methods
     @mock.patch('sktm.db.SktDb.commit_patch')
     @mock.patch('sktm.db.SktDb.get_sourceid')
     @mock.patch('sktm.db.sqlite3')
-    def test_commit_series_without_id(self, mock_sql, mock_get_sourceid,
-                                      mock_commit_patch, mock_log):
-        """Ensure commit_series() creates patch records without series_id."""
+    def test_commit_series(self, mock_sql, mock_get_sourceid,
+                           mock_commit_patch, mock_log):
+        """Ensure commit_series() creates patch records."""
         testdb = SktDb(self.database_file)
 
         mock_get_sourceid.return_value = '1'
@@ -79,14 +79,7 @@ class TestDb(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
         patches = [(['patch_id'], 'patch_name', 'patch_url', 'base_url',
                     'project_id', 'patch_date')]
-        result = testdb.commit_series(patches, None)
-
-        self.assertEqual(result, 11)
-
-        # Check if we have a proper SELECT query executed for the series_id
-        # lookup
-        execute_call_args = mock_sql.connect().cursor().execute.call_args[0]
-        self.assertIn('SELECT series_id FROM patch', execute_call_args[0])
+        testdb.commit_series(patches)
 
         mock_get_sourceid.assert_called_once()
         mock_commit_patch.assert_called_once()
@@ -99,9 +92,8 @@ class TestDb(unittest.TestCase):  # pylint: disable=too-many-public-methods
     @mock.patch('sktm.db.SktDb.commit_patch')
     @mock.patch('sktm.db.SktDb.get_sourceid')
     @mock.patch('sktm.db.sqlite3')
-    def test_commit_series_without_id_empty_db(self, mock_sql,
-                                               mock_get_sourceid,
-                                               mock_commit_patch, mock_log):
+    def test_commit_series_empty_db(self, mock_sql, mock_get_sourceid,
+                                    mock_commit_patch, mock_log):
         """Ensure commit_series() creates patch records with empty testdb."""
         # pylint: disable=invalid-name
         testdb = SktDb(self.database_file)
@@ -112,39 +104,7 @@ class TestDb(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
         patches = [(['patch_id'], 'patch_name', 'patch_url', 'base_url',
                     'project_id', 'patch_date')]
-        result = testdb.commit_series(patches, None)
-
-        self.assertEqual(result, 1)
-
-        # Check if we have a proper SELECT query executed for the series_id
-        # lookup
-        execute_call_args = mock_sql.connect().cursor().execute.call_args[0]
-        self.assertIn('SELECT series_id FROM patch', execute_call_args[0])
-
-        mock_get_sourceid.assert_called_once()
-        mock_commit_patch.assert_called_once()
-        mock_log.assert_called()
-
-        # Ensure the data was committed to the database
-        mock_sql.connect().commit.assert_called()
-
-    @mock.patch('logging.debug')
-    @mock.patch('sktm.db.SktDb.commit_patch')
-    @mock.patch('sktm.db.SktDb.get_sourceid')
-    @mock.patch('sktm.db.sqlite3')
-    def test_commit_series_with_id(self, mock_sql, mock_get_sourceid,
-                                   mock_commit_patch, mock_log):
-        """Ensure commit_series() creates patch records with a series_id."""
-        testdb = SktDb(self.database_file)
-
-        mock_get_sourceid.return_value = '1'
-        mock_commit_patch.return_value = None
-
-        patches = [(['patch_id'], 'patch_name', 'patch_url', 'base_url',
-                    'project_id', 'patch_date')]
-        result = testdb.commit_series(patches, 10)
-
-        self.assertEqual(result, 10)
+        testdb.commit_series(patches)
 
         mock_get_sourceid.assert_called_once()
         mock_commit_patch.assert_called_once()

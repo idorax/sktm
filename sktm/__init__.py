@@ -305,8 +305,6 @@ class watcher(object):
                     )
                 elif pjt == sktm.jtype.PATCHWORK:
                     patches = list()
-                    slist = list()
-                    series_id = None
                     bres = self.jk.get_result(self.jobname, bid)
                     rurl = self.jk.get_result_url(self.jobname, bid)
                     logging.info("result=%s", bres)
@@ -335,8 +333,6 @@ class watcher(object):
                                          patch.get("name"))
                             if self.restapi:
                                 projid = int(patch.get("project").get("id"))
-                                for series in patch.get("series"):
-                                    slist.append(series.get("id"))
                             else:
                                 projid = int(patch.get("project_id"))
                             patches.append((pid, patch.get("name"), patch_url,
@@ -348,13 +344,8 @@ class watcher(object):
                             raise Exception("Malfomed patch url: %s" %
                                             patch_url)
 
-                    try:
-                        series_id = max(set(slist), key=slist.count)
-                    except ValueError:
-                        pass
-
                     if bres != sktm.tresult.BASELINE_FAILURE:
-                        self.db.commit_tested(patches, series_id)
+                        self.db.commit_tested(patches)
                 else:
                     raise Exception("Unknown job type: %d" % pjt)
 
