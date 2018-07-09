@@ -232,6 +232,37 @@ class watcher(object):
 
         return ready, dropped
 
+    def get_patch_info_from_url(self, interface, patch_url):
+        """
+        Retrieve patch info tuple.
+
+        Args:
+            interface: Interface of the Patchwork project the patch belongs to.
+            patch_url: URL of the patch to retrieve info tuple for.
+
+        Returns: Patch info tuple (patch_id, patch_name, patch_url, baseurl,
+                                   project_id, patch_date).
+        """
+        match = re.match(r'(.*)/patch/(\d+)$', patch_url)
+        if not match:
+            raise Exception('Malformed patch url: %s' % patch_url)
+
+        baseurl = match.group(1)
+        patch_id = int(match.group(2))
+        patch = interface.get_patch_by_id(patch_id)
+        if patch is None:
+            raise Exception('Can\'t get data for %s' % patch_url)
+
+        logging.info('patch: [%d] %s', patch_id, patch.get('name'))
+
+        if self.restapi:
+            project_id = int(patch.get('project').get('id'))
+        else:
+            project_id = int(patch.get('project_id'))
+
+        return (patch_id, patch.get('name'), patch_url, baseurl, project_id,
+                patch.get('date').replace(' ', 'T'))
+
     def check_patchwork(self):
         """
         Submit and register Jenkins builds for series which appeared in
@@ -258,6 +289,15 @@ class watcher(object):
                 logging.info("ready series: %s", series.get_obj_url_list())
             for series in series_dropped:
                 logging.info("dropped series: %s", series.get_obj_url_list())
+
+                # Retrieve all data and save dropped patches in the DB
+                patches = []
+                for patch_url in series.get_patch_url_list():
+                    patches.append(self.get_patch_info_from_url(cpw,
+                                                                patch_url))
+
+                self.db.commit_series(patches)
+
             series_list += series_ready
             # Add series summaries for all patches staying pending for
             # longer than 12 hours
@@ -322,27 +362,8 @@ class watcher(object):
 
                     patch_url_list = self.jk.get_patchwork(self.jobname, bid)
                     for patch_url in patch_url_list:
-                        match = re.match(r"(.*)/patch/(\d+)$", patch_url)
-                        if match:
-                            baseurl = match.group(1)
-                            pid = int(match.group(2))
-                            patch = cpw.get_patch_by_id(pid)
-                            if patch is None:
-                                continue
-                            logging.info("patch: [%d] %s", pid,
-                                         patch.get("name"))
-                            if self.restapi:
-                                projid = int(patch.get("project").get("id"))
-                            else:
-                                projid = int(patch.get("project_id"))
-                            patches.append((pid, patch.get("name"), patch_url,
-                                            baseurl, projid,
-                                            patch.get("date").replace(" ",
-                                                                      "T")))
-                            cpw.set_patch_check(pid, rurl, bres)
-                        else:
-                            raise Exception("Malfomed patch url: %s" %
-                                            patch_url)
+                        patches.append(self.get_patch_info_from_url(cpw,
+                                                                    patch_url))
 
                     if bres != sktm.tresult.BASELINE_FAILURE:
                         self.db.commit_tested(patches)
