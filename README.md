@@ -69,6 +69,17 @@ Install Kerberos client to enable `skt` authentication to Beaker:
 Install `skt` dependencies following its
 [README.md](https://github.com/RH-FMK/skt).
 
+Run tests
+---------
+
+To run all tests execute:
+
+    python -m pytest -v -s tests
+
+To run some specific tests, you can execute a specific test like this:
+
+    python -m pytest -v -s tests/test_patchwork.py
+
 Installation
 ------------
 
