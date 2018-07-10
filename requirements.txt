@@ -1,4 +1,3 @@
-beaker-client
 dateutils
 enum34
 jenkinsapi
