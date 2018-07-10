@@ -153,27 +153,6 @@ class TestDb(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
         self.assertEqual(result, 1)
 
-    @mock.patch('sktm.db.sqlite3')
-    def test_get_baselineid(self, mock_sql):
-        """Ensure __get_baselineid() returns baseline_id."""
-        # pylint: disable=W0212,E1101
-        testdb = SktDb(self.database_file)
-        mock_sql.connect().cursor().fetchone.return_value = [1]
-        result = testdb._SktDb__get_baselineid('baserepo_id', 'abcdef')
-
-        self.assertEqual(result, 1)
-
-    @mock.patch('sktm.db.sqlite3')
-    def test_get_baselineid_empty(self, mock_sql):
-        """Ensure __get_baselineid() returns None when
-           no baseline_id exists."""
-        # pylint: disable=W0212,E1101
-        testdb = SktDb(self.database_file)
-        mock_sql.connect().cursor().fetchone.return_value = None
-        result = testdb._SktDb__get_baselineid('baserepo_id', 'abcdef')
-
-        self.assertIsNone(result)
-
     @mock.patch('sktm.db.SktDb._SktDb__get_repoid')
     @mock.patch('sktm.db.sqlite3')
     def test_get_baselineresult(self, mock_sql, mock_get_repoid):

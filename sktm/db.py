@@ -272,24 +272,6 @@ class SktDb(object):
 
         return patchlist
 
-    def __get_baselineid(self, baserepo_id, commithash):
-        """Get the baseline_id for a particular baserepo_id and commithash.
-
-        Args:
-            baserepo_id:    ID of the git repository.
-            commithash:     Commit SHA of the baseline commit.
-
-        """
-        self.cur.execute('SELECT id FROM baseline WHERE '
-                         'baserepo_id = ? AND commitid = ?',
-                         (baserepo_id, commithash))
-        result = self.cur.fetchone()
-
-        if not result:
-            return None
-
-        return result[0]
-
     def __get_commitdate(self, baserepo, commithash):
         """Get the date of a commit in a baseline.
 
