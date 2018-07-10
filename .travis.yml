@@ -9,6 +9,4 @@ install:
     - pip install -r test-requirements.txt
     - pip install tox
 script:
-    # Make sure all Python files are loadable
-    - find -name '*.py' | xargs -l1 -IFILE python -c 'import imp; imp.load_source("", "FILE")'
     - tox -e $TOX_ENV
