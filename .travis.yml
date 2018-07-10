@@ -9,3 +9,4 @@ install:
     - pip install coveralls tox
 script:
     - tox -e $TOX_ENV
+    - pip uninstall -y sktm
