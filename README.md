@@ -47,7 +47,7 @@ Make sure you have Python 2 installed to be able to run sktm:
 
 Install sktm requirements:
 
-    sudo pip2 install dateutils enum34 jenkinsapi junit_xml requests
+    sudo pip2 install dateutils enum34 jenkinsapi requests
 
 Install Jenkins Job Builder to be able to automate Jenkins setup:
 

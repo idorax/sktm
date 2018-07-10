@@ -1,5 +1,4 @@
 dateutils
 enum34
 jenkinsapi
-junit_xml
 requests
