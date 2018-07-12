@@ -349,24 +349,26 @@ class watcher(object):
     def check_pending(self):
         for (pjt, bid, cpw) in self.pj:
             if self.jk.is_build_complete(self.jobname, bid):
-                logging.info("job completed: jjid=%d; type=%d", bid, pjt)
+                bres = self.jk.get_result(self.jobname, bid)
+                rurl = self.jk.get_result_url(self.jobname, bid)
+                basehash = self.jk.get_base_hash(self.jobname, bid)
+                basedate = self.jk.get_base_commitdate(self.jobname, bid)
+
+                logging.info("job completed: "
+                             "type=%d; jjid=%d; result=%s; url=%s",
+                             pjt, bid, bres.name, rurl)
                 self.pj.remove((pjt, bid, cpw))
+
                 if pjt == sktm.jtype.BASELINE:
                     self.db.update_baseline(
                         self.baserepo,
-                        self.jk.get_base_hash(self.jobname, bid),
-                        self.jk.get_base_commitdate(self.jobname, bid),
-                        self.jk.get_result(self.jobname, bid),
+                        basehash,
+                        basedate,
+                        bres,
                         bid
                     )
                 elif pjt == sktm.jtype.PATCHWORK:
                     patches = list()
-                    bres = self.jk.get_result(self.jobname, bid)
-                    rurl = self.jk.get_result_url(self.jobname, bid)
-                    logging.info("result=%s", bres)
-                    logging.info("url=%s", rurl)
-                    basehash = self.jk.get_base_hash(self.jobname, bid)
-                    logging.info("basehash=%s", basehash)
 
                     patch_url_list = self.jk.get_patchwork(self.jobname, bid)
                     for patch_url in patch_url_list:
