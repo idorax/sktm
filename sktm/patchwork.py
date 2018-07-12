@@ -677,10 +677,6 @@ class skt_patchwork2(PatchworkProject):
                    'description': 'Kernel CI testing'}
         if result == sktm.tresult.SUCCESS:
             payload['state'] = PW_CHECK_CHOICES['success']
-        elif result == sktm.tresult.BASELINE_FAILURE:
-            payload['state'] = PW_CHECK_CHOICES['warning']
-            payload['description'] = 'Baseline failure found while testing '
-            'this patch'
         else:
             payload['state'] = PW_CHECK_CHOICES['fail']
             payload['description'] = str(result)

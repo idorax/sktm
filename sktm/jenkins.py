@@ -244,18 +244,6 @@ class skt_jenkins(object):
         if bstatus == "SUCCESS":
             return sktm.tresult.SUCCESS
 
-        # If build is UNSTABLE and all cmd_run steps are PASSED or FIXED
-        if bstatus == "UNSTABLE" and \
-                (set(self.__get_data_list(jobname, buildid,
-                                          "skt.cmd_run", "status")) <=
-                 set(["PASSED", "FIXED"])):
-            # If there was at least one baseline test failure
-            if self.get_baseretcode(jobname, buildid) != 0:
-                logging.warning("baseline failure found during patch testing")
-                return sktm.tresult.BASELINE_FAILURE
-
-            return sktm.tresult.SUCCESS
-
         # Find earliest (worst) step failure
         step_failure_result_list = [
             ("skt.cmd_merge", sktm.tresult.MERGE_FAILURE),

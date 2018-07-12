@@ -50,7 +50,6 @@ class tresult(enum.IntEnum):
     BUILD_FAILURE = 2
     PUBLISH_FAILURE = 3
     TEST_FAILURE = 4
-    BASELINE_FAILURE = 5
 
 
 class jtype(enum.IntEnum):
@@ -369,22 +368,13 @@ class watcher(object):
                     logging.info("url=%s", rurl)
                     basehash = self.jk.get_base_hash(self.jobname, bid)
                     logging.info("basehash=%s", basehash)
-                    if bres == sktm.tresult.BASELINE_FAILURE:
-                        self.db.update_baseline(
-                            self.baserepo,
-                            basehash,
-                            self.jk.get_base_commitdate(self.jobname, bid),
-                            sktm.tresult.TEST_FAILURE,
-                            bid
-                        )
 
                     patch_url_list = self.jk.get_patchwork(self.jobname, bid)
                     for patch_url in patch_url_list:
                         patches.append(self.get_patch_info_from_url(cpw,
                                                                     patch_url))
 
-                    if bres != sktm.tresult.BASELINE_FAILURE:
-                        self.db.commit_tested(patches)
+                    self.db.commit_tested(patches)
                 else:
                     raise Exception("Unknown job type: %d" % pjt)
 
