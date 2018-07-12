@@ -360,6 +360,10 @@ class watcher(object):
                              pjt, bid, bres.name, rurl)
                 self.pj.remove((pjt, bid, cpw))
 
+                if bres == sktm.tresult.ERROR:
+                    logging.warning("job completed with an error, ignoring")
+                    continue
+
                 if pjt == sktm.jtype.BASELINE:
                     self.db.update_baseline(
                         self.baserepo,

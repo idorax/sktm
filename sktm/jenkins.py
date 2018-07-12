@@ -243,20 +243,24 @@ class skt_jenkins(object):
 
         if bstatus == "SUCCESS":
             return sktm.tresult.SUCCESS
-
-        # Find earliest (worst) step failure
-        step_failure_result_list = [
-            ("skt.cmd_merge", sktm.tresult.MERGE_FAILURE),
-            ("skt.cmd_build", sktm.tresult.BUILD_FAILURE),
-            ("skt.cmd_run", sktm.tresult.TEST_FAILURE),
-        ]
-        for (step, failure_result) in step_failure_result_list:
-            if set(self.__get_data_list(jobname, buildid, step, "status")) & \
-                    set(["FAILED", "REGRESSION"]):
-                return failure_result
-
-        logging.warning("Unknown status. marking as test failure")
-        return sktm.tresult.TEST_FAILURE
+        elif bstatus == "UNSTABLE":
+            # Find earliest (worst) step failure
+            step_failure_result_list = [
+                ("skt.cmd_merge", sktm.tresult.MERGE_FAILURE),
+                ("skt.cmd_build", sktm.tresult.BUILD_FAILURE),
+                ("skt.cmd_run", sktm.tresult.TEST_FAILURE),
+            ]
+            for (step, failure_result) in step_failure_result_list:
+                if set(self.__get_data_list(jobname, buildid,
+                                            step, "status")) & \
+                        set(["FAILED", "REGRESSION"]):
+                    return failure_result
+            logging.warning("Build status is \"%s\", "
+                            "but no failed steps found, reporting as error",
+                            bstatus)
+        else:
+            logging.warning("Reporting build status \"%s\" as error", bstatus)
+        return sktm.tresult.ERROR
 
     # FIXME Clarify/fix argument names
     def build(self, jobname, baserepo=None, ref=None, baseconfig=None,
