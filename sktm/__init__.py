@@ -48,7 +48,6 @@ class tresult(enum.IntEnum):
     SUCCESS = 0
     MERGE_FAILURE = 1
     BUILD_FAILURE = 2
-    PUBLISH_FAILURE = 3
     TEST_FAILURE = 4
 
 
