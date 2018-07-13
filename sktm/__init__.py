@@ -45,6 +45,7 @@ def join_with_slash(base, *suffix):
 
 class tresult(enum.IntEnum):
     """Test result"""
+    ERROR = -1
     SUCCESS = 0
     MERGE_FAILURE = 1
     BUILD_FAILURE = 2

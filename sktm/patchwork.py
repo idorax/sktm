@@ -658,7 +658,8 @@ class skt_patchwork2(PatchworkProject):
     def set_patch_check(self, pid, jurl, result):
         """
         Add a patch "check" for the specified patch, with the specified
-        Jenkins build URL and result (sktm.tresult).
+        Jenkins build URL and result (sktm.tresult). The result cannot be
+        sktm.tresult.ERROR.
 
         Args:
             pid:    The ID of the patch to add the "check" for.
@@ -987,7 +988,8 @@ class skt_patchwork(PatchworkProject):
     def set_patch_check(self, pid, jurl, result):
         """
         Add a patch "check" for the specified patch, with the specified
-        Jenkins build URL and result (sktm.tresult).
+        Jenkins build URL and result (sktm.tresult). The result cannot be
+        sktm.tresult.ERROR.
 
         Args:
             pid:    The ID of the patch to add the "check" for.

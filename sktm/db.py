@@ -434,7 +434,8 @@ class SktDb(object):
             baserepo:   Baseline Git repo URL.
             commithash: Commit SHA of the baseline commit.
             commitdate: Date of the commit.
-            result:     Result ID of the test run.
+            result:     Result ID of the test run (an sktm.tresult).
+                        Cannot be sktm.tresult.ERROR.
             build_id:   The build ID of the test run.
 
         """
