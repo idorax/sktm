@@ -18,6 +18,7 @@ import argparse
 import ConfigParser
 import logging
 import os
+import sktm.reporter
 import sktm
 import sktm.jenkins
 
@@ -165,8 +166,16 @@ def cmd_testinfo(sw, cfg):
     db.dump_baserepo_info()
 
 
-def cmd_report(sw, cfg):
-    pass
+def cmd_report(cfg):
+    report = sktm.reporter.MailReporter(cfg.get('assets'),
+                                        cfg.get('mail_from'),
+                                        cfg.get('mail_to'),
+                                        cfg.get('report_intro'),
+                                        cfg.get('report_footer'),
+                                        smtp_url=cfg.get('smtp_url'),
+                                        headers=cfg.get('mail_header'))
+    report.create_report()
+    report.send_report()
 
 
 def load_config(args):
@@ -200,20 +209,23 @@ def main():
     cfg = load_config(args)
     logging.debug("cfg=%s", cfg)
 
-    jenkins_project = sktm.jenkins.JenkinsProject(cfg.get("jjname"),
-                                                  cfg.get("jurl"),
-                                                  cfg.get("jlogin"),
-                                                  cfg.get("jpass"))
+    if args.func == cmd_report:
+        cmd_report(cfg)
+    else:
+        jenkins_project = sktm.jenkins.JenkinsProject(cfg.get("jjname"),
+                                                      cfg.get("jurl"),
+                                                      cfg.get("jlogin"),
+                                                      cfg.get("jpass"))
 
-    sw = sktm.watcher(jenkins_project, cfg.get("db"),
-                      cfg.get("filter"), cfg.get("makeopts"))
+        sw = sktm.watcher(jenkins_project, cfg.get("db"),
+                          cfg.get("filter"), cfg.get("makeopts"))
 
-    args.func(sw, cfg)
-    try:
-        sw.wait_for_pending()
-    except KeyboardInterrupt:
-        logging.info("Quitting...")
-        sw.cleanup()
+        args.func(sw, cfg)
+        try:
+            sw.wait_for_pending()
+        except KeyboardInterrupt:
+            logging.info("Quitting...")
+            sw.cleanup()
 
 
 if __name__ == '__main__':
