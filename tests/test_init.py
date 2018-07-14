@@ -56,7 +56,7 @@ class TestIndependent(unittest.TestCase):
 class TestInit(unittest.TestCase):
     """Test cases for the __init__ module."""
 
-    @mock.patch('sktm.jenkins.skt_jenkins', Mock())
+    @mock.patch('sktm.jenkins.JenkinsProject', Mock())
     def setUp(self):
         """Test fixtures for testing __init__."""
         self.database_dir = tempfile.mkdtemp()

@@ -79,10 +79,10 @@ class watcher(object):
         # Database instance
         self.db = sktm.db.SktDb(os.path.expanduser(dbpath))
         # Jenkins interface instance
-        self.jk = sktm.jenkins.skt_jenkins(jenkinsurl, jenkinslogin,
-                                           jenkinspassword)
-        # Jenkins project name
-        self.jobname = jenkinsjobname
+        self.jk = sktm.jenkins.JenkinsProject(jenkinsjobname,
+                                              jenkinsurl,
+                                              jenkinslogin,
+                                              jenkinspassword)
         # Patchset filter program
         self.patch_filter = patch_filter
         # Extra arguments to pass to "make"
@@ -190,8 +190,7 @@ class watcher(object):
     def check_baseline(self):
         """Submit a build for baseline"""
         self.pj.append((sktm.jtype.BASELINE,
-                        self.jk.build(self.jobname,
-                                      baserepo=self.baserepo,
+                        self.jk.build(baserepo=self.baserepo,
                                       ref=self.baseref,
                                       baseconfig=self.cfgurl,
                                       makeopts=self.makeopts),
@@ -323,7 +322,6 @@ class watcher(object):
                 # Submit and remember a Jenkins build for the series
                 self.pj.append((sktm.jtype.PATCHWORK,
                                 self.jk.build(
-                                    self.jobname,
                                     baserepo=self.baserepo,
                                     ref=stablecommit,
                                     baseconfig=self.cfgurl,
@@ -341,11 +339,11 @@ class watcher(object):
 
     def check_pending(self):
         for (pjt, bid, cpw) in self.pj:
-            if self.jk.is_build_complete(self.jobname, bid):
-                bres = self.jk.get_result(self.jobname, bid)
-                rurl = self.jk.get_result_url(self.jobname, bid)
-                basehash = self.jk.get_base_hash(self.jobname, bid)
-                basedate = self.jk.get_base_commitdate(self.jobname, bid)
+            if self.jk.is_build_complete(bid):
+                bres = self.jk.get_result(bid)
+                rurl = self.jk.get_result_url(bid)
+                basehash = self.jk.get_base_hash(bid)
+                basedate = self.jk.get_base_commitdate(bid)
 
                 logging.info("job completed: "
                              "type=%d; jjid=%d; result=%s; url=%s",
@@ -367,7 +365,7 @@ class watcher(object):
                 elif pjt == sktm.jtype.PATCHWORK:
                     patches = list()
 
-                    patch_url_list = self.jk.get_patchwork(self.jobname, bid)
+                    patch_url_list = self.jk.get_patchwork(bid)
                     for patch_url in patch_url_list:
                         patches.append(self.get_patch_info_from_url(cpw,
                                                                     patch_url))
