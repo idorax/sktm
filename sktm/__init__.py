@@ -24,6 +24,7 @@ import sktm.db
 import sktm.jenkins
 import sktm.misc
 import sktm.patchwork
+import sktm.jenkins
 
 
 def join_with_slash(base, *suffix):
@@ -52,16 +53,11 @@ class jtype(enum.IntEnum):
 
 # TODO This is no longer just a watcher. Rename/refactor/describe accordingly.
 class watcher(object):
-    def __init__(self, jenkinsurl, jenkinslogin, jenkinspassword,
-                 jenkinsjobname, dbpath, patch_filter, makeopts=None):
+    def __init__(self, jenkins_project, dbpath, patch_filter, makeopts=None):
         """
         Initialize a "watcher".
 
         Args:
-            jenkinsurl:         Jenkins instance URL.
-            jenkinslogin:       Jenkins user name.
-            jenkinspassword:    Jenkins user password.
-            jenkinsjobname:     Name of the Jenkins job to trigger and watch.
             dbpath:             Path to the job status database file.
             patch_filter:       The name of a patch series filter program.
                                 The program should accept a list of mbox URLs
@@ -79,10 +75,7 @@ class watcher(object):
         # Database instance
         self.db = sktm.db.SktDb(os.path.expanduser(dbpath))
         # Jenkins interface instance
-        self.jk = sktm.jenkins.JenkinsProject(jenkinsjobname,
-                                              jenkinsurl,
-                                              jenkinslogin,
-                                              jenkinspassword)
+        self.jk = jenkins_project
         # Patchset filter program
         self.patch_filter = patch_filter
         # Extra arguments to pass to "make"

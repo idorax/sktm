@@ -19,6 +19,7 @@ import ConfigParser
 import logging
 import os
 import sktm
+import sktm.jenkins
 
 
 def setup_parser():
@@ -129,8 +130,12 @@ def main():
     cfg = load_config(args)
     logging.debug("cfg=%s", cfg)
 
-    sw = sktm.watcher(cfg.get("jurl"), cfg.get("jlogin"), cfg.get("jpass"),
-                      cfg.get("jjname"), cfg.get("db"),
+    jenkins_project = sktm.jenkins.JenkinsProject(cfg.get("jjname"),
+                                                  cfg.get("jurl"),
+                                                  cfg.get("jlogin"),
+                                                  cfg.get("jpass"))
+
+    sw = sktm.watcher(jenkins_project, cfg.get("db"),
                       cfg.get("filter"), cfg.get("makeopts"))
 
     args.func(sw, cfg)
