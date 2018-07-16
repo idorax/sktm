@@ -446,6 +446,7 @@ class SktDb(object):
         logging.debug("previous result: %s", prev_res)
 
         if prev_res is None:
+            # This is a new commitid that we have not seen before
             logging.debug("creating baseline: repo=%s; commit=%s; result=%s",
                           baserepo, commithash, result)
             self.cur.execute('INSERT INTO '
@@ -454,7 +455,9 @@ class SktDb(object):
                              (baserepo_id, commithash, commitdate,
                               testrun_id))
             self.conn.commit()
-        elif result >= prev_res:
+        else:
+            # This commitid has been seen before and we need to update the
+            # testing status for it
             logging.debug("updating baseline: repo=%s; commit=%s; result=%s",
                           baserepo, commithash, result)
             self.cur.execute('UPDATE baseline SET testrun_id = ? '

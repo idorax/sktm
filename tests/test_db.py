@@ -500,29 +500,3 @@ class TestDb(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
         # Ensure the data was committed to the database
         mock_sql.connect().commit.assert_called()
-
-    @mock.patch('logging.debug')
-    @mock.patch('sktm.db.SktDb._SktDb__get_baselineresult')
-    @mock.patch('sktm.db.SktDb._SktDb__commit_testrun')
-    @mock.patch('sktm.db.SktDb._SktDb__get_repoid')
-    @mock.patch('sktm.db.sqlite3')
-    def test_update_baseline_not_newer(self, mock_sql, mock_get_repoid,
-                                       mock_commit_testrun,
-                                       mock_get_baselineresult, mock_log):
-        """Ensure baseline is updated when current result is older."""
-        # pylint: disable=too-many-arguments
-        testdb = SktDb(self.database_file)
-
-        mock_sql.reset_mock()
-        mock_get_repoid.return_value = '1'
-        mock_commit_testrun.return_value = '1'
-        mock_get_baselineresult.return_value = 2
-
-        testdb.update_baseline('baserepo', 'abcdef', '2018-06-01', 1, '1')
-
-        # Ensure a debug log was written
-        mock_log.assert_called()
-
-        # Ensure we didn't execute any SQL queries or run a commit
-        mock_sql.connect().cursor().execute.assert_not_called()
-        mock_sql.connect().commit.assert_not_called()
