@@ -209,19 +209,32 @@ class JenkinsProject(object):
                                        "baseretcode", 0)
 
     def get_result_url(self, buildid):
+        """
+        Get the URL of the web representation of the specified build of the
+        specified Jenkins project.
+
+        Args:
+            jobname:    Jenkins project name.
+            buildid:    Jenkins build ID.
+
+        Result:
+            The URL of the build result.
+        """
         return sktm.join_with_slash(self.server.base_server_url(),
                                     "job",
                                     str(buildid))
 
     def get_result(self, buildid):
         """
-        Get the status of a build for specified build ID.
+        Get result code (sktm.misc.TestResult) for the specified build of the
+        specified Jenkins project. Wait for the build to complete, if it
+        hasn't yet.
 
         Args:
             buildid:    Jenkins build ID.
 
         Return:
-            Status of the build (an sktm.misc.TestResult).
+            The build result code (sktm.misc.TestResult).
         """
         build = self._wait_and_get_build(buildid)
 
