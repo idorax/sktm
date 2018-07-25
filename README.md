@@ -265,6 +265,7 @@ Create the `~/.sktmrc` file telling sktm how to access Jenkins:
     jurl = http://localhost:8080
     jlogin = sktm
     jpass = sesame
+    jretry = 30
     EOF
 
 Usage

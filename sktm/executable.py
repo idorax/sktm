@@ -1,4 +1,4 @@
-# Copyright (c) 2017 Red Hat, Inc. All rights reserved. This copyrighted
+# Copyright (c) 2017-2018 Red Hat, Inc. All rights reserved. This copyrighted
 # material is made available to anyone wishing to use, modify, copy, or
 # redistribute it subject to the terms and conditions of the GNU General
 # Public License v.2 or later.
@@ -30,6 +30,8 @@ DEFAULT_REPORT_FOOTER = os.path.join(
     '../templates/report.footer'
 )
 
+DEFAULT_JENKINS_RETRY_COUNT = 30
+
 
 def setup_parser():
     """
@@ -47,6 +49,9 @@ def setup_parser():
     parser.add_argument("--jurl", help="Jenkins URL")
     parser.add_argument("--jlogin", help="Jenkins login")
     parser.add_argument("--jpass", help="Jenkins password")
+    parser.add_argument("--jretry", type=int,
+                        help="Counter to retry Jenkins, default to %d" %
+                        DEFAULT_JENKINS_RETRY_COUNT)
     parser.add_argument("--jjname", help="Jenkins job name")
     parser.add_argument("--makeopts", help="Specify options for make")
     parser.add_argument("--cfgurl", type=str, help="Kernel config URL")
@@ -205,6 +210,11 @@ def load_config(args):
     else:
         cfg['report_footer'] = os.path.abspath(cfg['report_footer'])
 
+    if not cfg.get('jretry'):
+        cfg['jretry'] = DEFAULT_JENKINS_RETRY_COUNT
+    else:
+        cfg['jretry'] = int(cfg.get('jretry'))
+
     return cfg
 
 
@@ -223,7 +233,8 @@ def main():
         jenkins_project = sktm.jenkins.JenkinsProject(cfg.get("jjname"),
                                                       cfg.get("jurl"),
                                                       cfg.get("jlogin"),
-                                                      cfg.get("jpass"))
+                                                      cfg.get("jpass"),
+                                                      cfg.get("jretry"))
 
         sw = sktm.watcher(jenkins_project, cfg.get("db"),
                           cfg.get("filter"), cfg.get("makeopts"))

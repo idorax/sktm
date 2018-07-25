@@ -1,4 +1,4 @@
-# Copyright (c) 2017 Red Hat, Inc. All rights reserved. This copyrighted
+# Copyright (c) 2017-2018 Red Hat, Inc. All rights reserved. This copyrighted
 # material is made available to anyone wishing to use, modify, copy, or
 # redistribute it subject to the terms and conditions of the GNU General
 # Public License v.2 or later.
@@ -23,7 +23,8 @@ import sktm.misc
 
 class JenkinsProject(object):
     """Jenkins project interface"""
-    def __init__(self, name, url, username=None, password=None):
+    def __init__(self, name, url, username=None, password=None,
+                 retry_cnt=None):
         """
         Initialize a Jenkins project interface.
 
@@ -32,19 +33,69 @@ class JenkinsProject(object):
             url:         Jenkins instance URL.
             username:    Jenkins user name.
             password:    Jenkins user password.
+            retry_cnt:   Counter to retry Jenkins in case of temporary network
+                         failures.
         """
         self.name = name
+
         # Initialize Jenkins server interface
         # TODO Add support for CSRF protection
         self.server = jenkinsapi.jenkins.Jenkins(url, username, password)
 
+        self.retry_cnt = retry_cnt
+
+    def __get_job(self):
+        """
+        Get Jenkens job by job name. Retry Jenkins self.retry_cnt times
+        in case of temporary network failures.
+
+        Return:
+            job if succeed, else raise the last exception.
+        """
+        for i in range(self.retry_cnt):
+            try:
+                job = self.server.get_job(self.name)
+                return job
+            except Exception as e:
+                logging.warning("catch %s: %s" % (type(e), e))
+                logging.info("now sleep 60s and try again")
+                time.sleep(60)
+
+        logging.error("fail to get job after retry %d times" % self.retry_cnt)
+        raise e
+
+    def __get_build(self, job, buildid):
+        """
+        Get Jenkins build by build ID. Retry Jenkins self.retry_cnt times
+        in case of temporary network failures.
+
+        Args:
+            job:        Jenkins job.
+            buildid:    Jenkins build ID.
+
+        Return:
+            build if succeed, else raise the last exception.
+        """
+        for i in range(self.retry_cnt):
+            try:
+                build = job.get_build(buildid)
+                return build
+            except Exception as e:
+                logging.warning("catch %s: %s" % (type(e), e))
+                logging.info("now sleep 60s and try again")
+                time.sleep(60)
+
+        logging.error("fail to get build after retry %d times" %
+                      self.retry_cnt)
+        raise e
+
     def _wait_and_get_build(self, buildid):
-        job = self.server.get_job(self.name)
-        build = job.get_build(buildid)
+        job = self.__get_job()
+        build = self.__get_build(job, buildid)
         build.block_until_complete(delay=60)
 
-        # call get_build again to ensure we have the results
-        build = job.get_build(buildid)
+        # call self.__get_build() again to ensure we have the results
+        build = self.__get_build(job, buildid)
 
         return build
 
@@ -313,8 +364,8 @@ class JenkinsProject(object):
             params["makeopts"] = makeopts
 
         logging.debug(params)
-        self.server.get_job(self.name)
-        expected_id = self.server.get_job(self.name).get_next_build_number()
+        job = self.__get_job()
+        expected_id = job.get_next_build_number()
         self.server.build_job(self.name, params)
         build = self.find_build(params, expected_id)
         logging.info("submitted build: %s", build)
@@ -330,8 +381,8 @@ class JenkinsProject(object):
         Return:
             True if the build is complete, False if not.
         """
-        job = self.server.get_job(self.name)
-        build = job.get_build(buildid)
+        job = self.__get_job()
+        build = self.__get_build(job, buildid)
 
         return not build.is_running()
 
@@ -349,7 +400,7 @@ class JenkinsProject(object):
         return True
 
     def find_build(self, params, eid=None):
-        job = self.server.get_job(self.name)
+        job = self.__get_job()
         lbuild = None
 
         while not lbuild:
@@ -367,7 +418,7 @@ class JenkinsProject(object):
 
         # slowpath
         for bid in job.get_build_ids():
-            build = job.get_build(bid)
+            build = self.__get_build(job, bid)
             if self._params_eq(build, params):
                 return build
         return None
