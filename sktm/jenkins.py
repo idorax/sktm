@@ -44,10 +44,13 @@ class JenkinsProject(object):
 
         self.retry_cnt = retry_cnt
 
-    def __get_job(self):
+    def __get_job(self, interval=60):
         """
         Get Jenkens job by job name. Retry Jenkins self.retry_cnt times
         in case of temporary network failures.
+
+        Args:
+            interval:   Seconds to sleep before retrying.
 
         Return:
             job if succeed, else raise the last exception.
@@ -58,13 +61,13 @@ class JenkinsProject(object):
                 return job
             except Exception as e:
                 logging.warning("catch %s: %s" % (type(e), e))
-                logging.info("now sleep 60s and try again")
-                time.sleep(60)
+                logging.info("now sleep %ds and try again" % interval)
+                time.sleep(interval)
 
         logging.error("fail to get job after retry %d times" % self.retry_cnt)
         raise e
 
-    def __get_build(self, job, buildid):
+    def __get_build(self, job, buildid, interval=60):
         """
         Get Jenkins build by build ID. Retry Jenkins self.retry_cnt times
         in case of temporary network failures.
@@ -72,6 +75,7 @@ class JenkinsProject(object):
         Args:
             job:        Jenkins job.
             buildid:    Jenkins build ID.
+            interval:   Seconds to sleep before retrying.
 
         Return:
             build if succeed, else raise the last exception.
@@ -82,12 +86,48 @@ class JenkinsProject(object):
                 return build
             except Exception as e:
                 logging.warning("catch %s: %s" % (type(e), e))
-                logging.info("now sleep 60s and try again")
-                time.sleep(60)
+                logging.info("now sleep %ds and try again" % interval)
+                time.sleep(interval)
 
         logging.error("fail to get build after retry %d times" %
                       self.retry_cnt)
         raise e
+
+    def __get_job_prop(self, job, method, interval):
+        """
+        Get property of Jenkins job. Retry Jenkins self.retry_cnt times
+        in case of temporary network failures.
+
+        Args:
+            job:        Jenkins job.
+            method:     Method of job.
+            interval:   Seconds to sleep before retrying.
+
+        Return:
+            job property if succeed, else raise the last exception after retry
+            self.retry_cnt times. Note it will directly raise AttributeError
+            if the method is invalid.
+        """
+        func = getattr(job, method)
+
+        for i in range(self.retry_cnt):
+            try:
+                prop = func()
+                return prop
+            except Exception as e:
+                logging.warning("catch %s: %s" % (type(e), e))
+                logging.info("now sleep %ds and try again" % interval)
+                time.sleep(interval)
+
+        logging.error("fail to %s after retry %d times" %
+                      (method.replace('_', ' '), self.retry_cnt))
+        raise e
+
+    def __get_build_ids(self, job, interval=60):
+        return self.__get_job_prop(self, job, "get_build_ids", interval)
+
+    def __get_last_build(self, job, interval=60):
+        return self.__get_job_prop(self, job, "get_last_build", interval)
 
     def _wait_and_get_build(self, buildid):
         job = self.__get_job()
@@ -412,12 +452,12 @@ class JenkinsProject(object):
         if eid is not None:
             while lbuild.get_number() < eid:
                 time.sleep(1)
-                lbuild = job.get_last_build()
+                lbuild = self.__get_last_build(job, 10)
         if self._params_eq(lbuild, params):
             return lbuild
 
         # slowpath
-        for bid in job.get_build_ids():
+        for bid in self.__get_build_ids(job):
             build = self.__get_build(job, bid)
             if self._params_eq(build, params):
                 return build
