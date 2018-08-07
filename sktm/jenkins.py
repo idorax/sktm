@@ -36,6 +36,9 @@ class JenkinsProject(object):
             retry_cnt:   Counter to retry Jenkins in case of temporary network
                          failures.
         """
+        if not name:
+            raise ValueError('No Jenkins job name specified!')
+
         self.name = name
 
         # Initialize Jenkins server interface
