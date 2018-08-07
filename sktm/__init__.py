@@ -308,9 +308,6 @@ class watcher(object):
             )
             # For each series summary
             for series in series_list:
-                # (Re-)add the series' patches to the "pending" list
-                self.db.set_patchset_pending(cpw.baseurl, cpw.project_id,
-                                             series.get_patch_info_list())
                 # Submit and remember a Jenkins build for the series
                 url_list = series.get_patch_url_list()
                 self.pj.append((sktm.JobType.PATCHWORK,
@@ -328,6 +325,10 @@ class watcher(object):
                 logging.info("submitted subject: %s", series.subject)
                 logging.info("submitted emails: %s", series.email_addr_set)
                 logging.info("submitted series: %s", url_list)
+
+                # (Re-)add the series' patches to the "pending" list
+                self.db.set_patchset_pending(cpw.baseurl, cpw.project_id,
+                                             series.get_patch_info_list())
 
     def check_pending(self):
         for (pjt, bid, cpw) in self.pj:
