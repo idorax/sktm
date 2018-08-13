@@ -28,6 +28,7 @@ SUMMARY_PASS = 0
 SUMMARY_MERGE_FAILURE = 1
 SUMMARY_BUILD_FAILURE = 2
 SUMMARY_TEST_FAILURE = 3
+SUMMARY_TRACE_FOUND = 4
 
 
 class MailAttachment(object):
@@ -212,6 +213,7 @@ class MailReporter(object):
             test_result_dir = os.path.dirname(next(iter(test_run)))
             build_report = ''
             run_report = ''
+            console_report = ''
 
             build_result = next((test_result for test_result in test_run
                                  if test_result.endswith('build.result')),
@@ -246,7 +248,27 @@ class MailReporter(object):
                                                       test_result_dir,
                                                       index)
 
-            full_report += '\n' + build_report + run_report
+            console_result = next((test_result for test_result in test_run
+                                   if test_result.endswith(
+                                           'console_check.result'
+                                   )), None)
+            if console_result:
+                with open(console_result, 'r') as console_result_file:
+                    if (console_result_file.read().startswith('false')
+                            and test_summary == SUMMARY_PASS):
+                        test_summary = SUMMARY_TRACE_FOUND
+
+                console_data = next(test_result for test_result in test_run
+                                    if test_result.endswith(
+                                            'console_check.report'
+                                    ))
+                with open(console_data, 'r') as console_report_file:
+                    console_report = console_report_file.read()
+            console_report = self.__substitute_and_attach(console_report,
+                                                          test_result_dir,
+                                                          index)
+
+            full_report += '\n' + build_report + run_report + console_report
 
         summary = self.__create_summary(test_summary)
 
@@ -280,6 +302,8 @@ class MailReporter(object):
             summary += 'Build FAILED'
         elif status == SUMMARY_TEST_FAILURE:
             summary += 'Testing FAILED'
+        elif status == SUMMARY_TRACE_FOUND:
+            summary += 'Call trace detected!'
 
         return summary + '\n'
 
