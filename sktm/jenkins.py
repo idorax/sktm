@@ -132,6 +132,10 @@ class JenkinsProject(object):
     def __get_last_build(self, job, interval=60):
         return self.__get_job_prop(self, job, "get_last_build", interval)
 
+    def __get_next_build_number(self, job, interval=60):
+        return self.__get_job_prop(self, job, "get_next_build_number",
+                                   interval)
+
     def _wait_and_get_build(self, buildid):
         job = self.__get_job()
         build = self.__get_build(job, buildid)
@@ -408,7 +412,7 @@ class JenkinsProject(object):
 
         logging.debug(params)
         job = self.__get_job()
-        expected_id = job.get_next_build_number()
+        expected_id = self.__get_next_build_number(job)
         self.server.build_job(self.name, params)
         build = self.find_build(params, expected_id)
         logging.info("submitted build: %s", build)
