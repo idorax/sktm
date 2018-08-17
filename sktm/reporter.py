@@ -215,6 +215,10 @@ class MailReporter(object):
             run_report = ''
             console_report = ''
 
+            # Here and below, use next() to iterate over the file list with a
+            # condition. It's faster and cleaner than explicitely looping over
+            # the items. For more details, see
+            # https://stackoverflow.com/questions/9868653
             build_result = next((test_result for test_result in test_run
                                  if test_result.endswith('build.result')),
                                 None)
