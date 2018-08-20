@@ -70,33 +70,7 @@ class JenkinsProject(object):
         logging.error("fail to get job after retry %d times" % self.retry_cnt)
         raise e
 
-    def __get_build(self, job, buildid, interval=60):
-        """
-        Get Jenkins build by build ID. Retry Jenkins self.retry_cnt times
-        in case of temporary network failures.
-
-        Args:
-            job:        Jenkins job.
-            buildid:    Jenkins build ID.
-            interval:   Seconds to sleep before retrying.
-
-        Return:
-            build if succeed, else raise the last exception.
-        """
-        for i in range(self.retry_cnt):
-            try:
-                build = job.get_build(buildid)
-                return build
-            except Exception as e:
-                logging.warning("catch %s: %s" % (type(e), e))
-                logging.info("now sleep %ds and try again" % interval)
-                time.sleep(interval)
-
-        logging.error("fail to get build after retry %d times" %
-                      self.retry_cnt)
-        raise e
-
-    def __get_job_prop(self, job, method, interval):
+    def __get_job_prop(self, job, method, interval, *args):
         """
         Get property of Jenkins job. Retry Jenkins self.retry_cnt times
         in case of temporary network failures.
@@ -105,6 +79,7 @@ class JenkinsProject(object):
             job:        Jenkins job.
             method:     Method of job.
             interval:   Seconds to sleep before retrying.
+            *args:      The args of method of job.
 
         Return:
             job property if succeed, else raise the last exception after retry
@@ -115,8 +90,7 @@ class JenkinsProject(object):
 
         for i in range(self.retry_cnt):
             try:
-                prop = func()
-                return prop
+                return func(*args)
             except Exception as e:
                 logging.warning("catch %s: %s" % (type(e), e))
                 logging.info("now sleep %ds and try again" % interval)
@@ -125,6 +99,9 @@ class JenkinsProject(object):
         logging.error("fail to %s after retry %d times" %
                       (method.replace('_', ' '), self.retry_cnt))
         raise e
+
+    def __get_build(self, job, buildid, interval=60):
+        return self.__get_job_prop(self, job, "get_build", interval, buildid)
 
     def __get_build_ids(self, job, interval=60):
         return self.__get_job_prop(self, job, "get_build_ids", interval)
