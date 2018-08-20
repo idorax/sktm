@@ -195,7 +195,9 @@ class MailReporter(object):
         Args:
             merge_report:    Absolute path to the merge report file.
             result_set_list: List of sets of reports, each set representing one
-                             run to report, defaults to [].
+                             run to report, defaults to []. Each set contains
+                             absolute paths to the .report and .result files of
+                             the test run, for all stages that were executed.
         """
         full_report = ''
         test_summary = SUMMARY_PASS
