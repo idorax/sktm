@@ -47,28 +47,37 @@ class JenkinsProject(object):
 
         self.retry_cnt = retry_cnt
 
-    def __get_job(self, interval=60):
+    def __call_server_method(self, method, interval, *args):
         """
-        Get Jenkens job by job name. Retry Jenkins self.retry_cnt times
+        Call method of self.server. Retry Jenkins self.retry_cnt times
         in case of temporary network failures.
 
         Args:
+            method:     Method of self.server.
             interval:   Seconds to sleep before retrying.
+            *args:      The args of method of self.server.
 
         Return:
-            job if succeed, else raise the last exception.
+            what the method of self.server return if succeed, else raise the
+            last exception after retry self.retry_cnt times. Note it will
+            directly raise AttributeError if the method is invalid.
         """
+        func = getattr(self.server, method)
+
         for i in range(self.retry_cnt):
             try:
-                job = self.server.get_job(self.name)
-                return job
+                return func(*args)
             except Exception as e:
                 logging.warning("catch %s: %s" % (type(e), e))
                 logging.info("now sleep %ds and try again" % interval)
                 time.sleep(interval)
 
-        logging.error("fail to get job after retry %d times" % self.retry_cnt)
+        logging.error("fail to %s after retry %d times" %
+                      (method.replace('_', ' '), self.retry_cnt))
         raise e
+
+    def __get_job(self, interval=60):
+        return self.__call_server_method(self, "get_job", interval, self.name)
 
     def __get_job_prop(self, job, method, interval, *args):
         """
