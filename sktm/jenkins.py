@@ -64,17 +64,17 @@ class JenkinsProject(object):
         """
         func = getattr(self.server, method)
 
-        for i in range(self.retry_cnt):
+        for _ in range(self.retry_cnt):
             try:
                 return func(*args)
-            except Exception as e:
-                logging.warning("catch %s: %s" % (type(e), e))
-                logging.info("now sleep %ds and try again" % interval)
+            except Exception as exc:
+                logging.warning("catch %s: %s", type(exc), exc)
+                logging.info("now sleep %ds and try again", interval)
                 time.sleep(interval)
 
-        logging.error("fail to %s after retry %d times" %
-                      (method.replace('_', ' '), self.retry_cnt))
-        raise e
+        logging.error("fail to %s after retry %d times",
+                      method.replace('_', ' '), self.retry_cnt)
+        raise exc
 
     def __get_job(self, interval=60):
         return self.__call_server_method("get_job", interval, self.name)
@@ -103,17 +103,17 @@ class JenkinsProject(object):
         """
         func = getattr(job, method)
 
-        for i in range(self.retry_cnt):
+        for _ in range(self.retry_cnt):
             try:
                 return func(*args)
-            except Exception as e:
-                logging.warning("catch %s: %s" % (type(e), e))
-                logging.info("now sleep %ds and try again" % interval)
+            except Exception as exc:
+                logging.warning("catch %s: %s", type(exc), exc)
+                logging.info("now sleep %ds and try again", interval)
                 time.sleep(interval)
 
-        logging.error("fail to %s after retry %d times" %
-                      (method.replace('_', ' '), self.retry_cnt))
-        raise e
+        logging.error("fail to %s after retry %d times",
+                      method.replace('_', ' '), self.retry_cnt)
+        raise exc
 
     def __get_build(self, job, buildid, interval=60):
         return self.__get_job_prop(job, "get_build", interval, buildid)
@@ -213,11 +213,11 @@ class JenkinsProject(object):
         Returns:
             The value uniform for the key across all steps.
         """
-        def verify(x, y):
-            if x != y:
+        def verify(first_key, second_key):
+            if first_key != second_key:
                 raise Exception("Non-uniform value of key %s: %s != %s",
-                                cfgkey, x, y)
-            return x
+                                cfgkey, first_key, second_key)
+            return first_key
 
         return reduce(verify,
                       self.__get_cfg_data_list(buildid, stepname,
