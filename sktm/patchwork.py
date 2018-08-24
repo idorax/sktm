@@ -575,11 +575,11 @@ class PatchworkV2Project(PatchworkProject):
 
         link = response.headers.get("Link")
         if link is not None:
-            m = re.match("<(.*)>; rel=\"next\"", link)
-            if m:
-                nurl = m.group(1)
+            match = re.match('<(.*)>; rel="next"', link)
+            if match:
+                next_url = match.group(1)
                 # TODO Limit recursion
-                series_list += self.__get_series_from_url(nurl)
+                series_list += self.__get_series_from_url(next_url)
 
         return series_list
 
@@ -679,7 +679,7 @@ class PatchworkV2Project(PatchworkProject):
         pdata = response.json()
         # If there is a single patch returned we get a dict, not a list with
         # a single element. Fix this inconsistency for easier processing.
-        if type(pdata) is not list:
+        if not isinstance(pdata, list):
             pdata = [pdata]
 
         for patch in pdata:
@@ -696,11 +696,11 @@ class PatchworkV2Project(PatchworkProject):
 
         link = response.headers.get("Link")
         if link:
-            m = re.match("<(.*)>; rel=\"next\"", link)
-            if m:
-                nurl = m.group(1)
+            match = re.match('<(.*)>; rel="next"', link)
+            if match:
+                next_url = match.group(1)
                 # TODO Limit recursion
-                series_list += self.__get_patchsets_by_patch(nurl, seen)
+                series_list += self.__get_patchsets_by_patch(next_url, seen)
 
         return series_list
 
@@ -839,19 +839,19 @@ class PatchworkV1Project(PatchworkProject):
 
         return rpc
 
-    def __log_patch(self, id, name, message_id, emails):
+    def __log_patch(self, patch_id, name, message_id, emails):
         """
         Log patch ID, name, Message-ID, and e-mails.
 
         Args:
-            id:         The patch ID to log.
+            patch_id:   The patch ID to log.
             name:       The patch name to log.
             message_id: The Message-ID header from the patch e-mail.
             emails:     E-mail addresses involved with the patch.
         """
-        logging.info("patch %d %s", id, name)
-        logging.info("patch %d message_id: %s", id, message_id)
-        logging.info("patch %d emails: %s", id, emails)
+        logging.info("patch %d %s", patch_id, name)
+        logging.info("patch %d message_id: %s", patch_id, message_id)
+        logging.info("patch %d emails: %s", patch_id, emails)
 
     def __update_patch_name(self, patch):
         """
