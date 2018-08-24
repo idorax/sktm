@@ -868,10 +868,8 @@ class PatchworkV1Project(PatchworkProject):
         if 'root_comment' in patch:
             # internal RH only: rewrite the original subject line
             msg = email.message_from_string(patch['root_comment']['headers'])
-            subject = msg.get('Subject')
-            if subject is not None:
-                subject = subject.replace('\n\t', ' ').replace('\n', ' ')
-            # TODO What happens when subject is None?
+            subject = msg.get('Subject', '')
+            subject = subject.replace('\n\t', ' ').replace('\n', ' ')
             patch['name'] = stringify(
                 email.header.decode_header(subject)[0][0]
             )
