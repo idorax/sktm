@@ -186,6 +186,43 @@ class MailReporter(object):
         logging.debug('Results retrieved from %s: %s', dir_path, results)
         return results
 
+    def __get_stage_report(self, stage, test_run_files, summary):
+        """
+        Grab the files from the test run that represent the chosen stage and
+        retrieve the data for it.
+
+        Args:
+            stage:          Name of the stage.
+            test_run_files: Set of absolute paths to the output files of the
+                            test run.
+            summary:        Constant to be returned if the stage failed.
+
+        Returns:
+            Tuple (stage_summary, stage_report), where stage_summary represents
+            the result of the stage and stage_report the raw report text
+            (without substitutions).
+        """
+        stage_summary = SUMMARY_PASS
+        stage_report = ''
+
+        # This method uses next() to iterate over the files with a condition.
+        # It's faster and cleaner than explicitely looping over the items. For
+        # more details, see https://stackoverflow.com/questions/9868653
+        stage_result = next((test_result for test_result in test_run_files
+                             if test_result.endswith(stage + '.result')),
+                            None)
+        if stage_result:
+            with open(stage_result, 'r') as stage_result_file:
+                if stage_result_file.read().startswith('false'):
+                    stage_summary = summary
+
+            stage_data = next(test_result for test_result in test_run_files
+                              if test_result.endswith(stage + '.report'))
+            with open(stage_data, 'r') as stage_report_file:
+                stage_report = stage_report_file.read()
+
+        return (stage_summary, stage_report)
+
     def __create_data(self, merge_report, result_set_list=[]):
         """
         Format data from logs into a report, attach the body of the report
@@ -211,70 +248,29 @@ class MailReporter(object):
             if merge_result.read().startswith('false'):
                 test_summary = SUMMARY_MERGE_FAILURE
 
+        stage_to_summary_map = {'build': SUMMARY_BUILD_FAILURE,
+                                'run': SUMMARY_TEST_FAILURE,
+                                'console_check': SUMMARY_TRACE_FOUND}
+
         for index, test_run in enumerate(result_set_list):
             test_result_dir = os.path.dirname(next(iter(test_run)))
-            build_report = ''
-            run_report = ''
-            console_report = ''
 
-            # Here and below, use next() to iterate over the file list with a
-            # condition. It's faster and cleaner than explicitely looping over
-            # the items. For more details, see
-            # https://stackoverflow.com/questions/9868653
-            build_result = next((test_result for test_result in test_run
-                                 if test_result.endswith('build.result')),
-                                None)
-            if build_result:
-                with open(build_result, 'r') as build_result_file:
-                    if build_result_file.read().startswith('false'):
-                        test_summary = SUMMARY_BUILD_FAILURE
+            # Keep the right order of reports
+            for stage in ['build', 'run', 'console_check']:
+                stage_summary, stage_report = self.__get_stage_report(
+                    stage,
+                    test_run,
+                    stage_to_summary_map[stage]
+                )
+                stage_report = self.__substitute_and_attach(stage_report,
+                                                            test_result_dir,
+                                                            index)
+                if test_summary == SUMMARY_PASS:
+                    test_summary = stage_summary
 
-                build_data = next(test_result for test_result in test_run
-                                  if test_result.endswith('build.report'))
-                with open(build_data, 'r') as build_report_file:
-                    build_report = build_report_file.read()
-            build_report = self.__substitute_and_attach(build_report,
-                                                        test_result_dir,
-                                                        index)
-
-            run_result = next((test_result for test_result in test_run
-                               if test_result.endswith('run.result')),
-                              None)
-            if run_result:
-                with open(run_result, 'r') as run_result_file:
-                    if (run_result_file.read().startswith('false')
-                            and test_summary == SUMMARY_PASS):
-                        test_summary = SUMMARY_TEST_FAILURE
-
-                run_data = next(test_result for test_result in test_run
-                                if test_result.endswith('run.report'))
-                with open(run_data, 'r') as run_report_file:
-                    run_report = run_report_file.read()
-            run_report = self.__substitute_and_attach(run_report,
-                                                      test_result_dir,
-                                                      index)
-
-            console_result = next((test_result for test_result in test_run
-                                   if test_result.endswith(
-                                           'console_check.result'
-                                   )), None)
-            if console_result:
-                with open(console_result, 'r') as console_result_file:
-                    if (console_result_file.read().startswith('false')
-                            and test_summary == SUMMARY_PASS):
-                        test_summary = SUMMARY_TRACE_FOUND
-
-                console_data = next(test_result for test_result in test_run
-                                    if test_result.endswith(
-                                            'console_check.report'
-                                    ))
-                with open(console_data, 'r') as console_report_file:
-                    console_report = console_report_file.read()
-            console_report = self.__substitute_and_attach(console_report,
-                                                          test_result_dir,
-                                                          index)
-
-            full_report += '\n' + build_report + run_report + console_report
+                if stage == 'build':
+                    full_report += '\n'
+                full_report += stage_report
 
         summary = self.__create_summary(test_summary)
 
