@@ -77,14 +77,13 @@ class JenkinsProject(object):
         raise e
 
     def __get_job(self, interval=60):
-        return self.__call_server_method(self, "get_job", interval, self.name)
+        return self.__call_server_method("get_job", interval, self.name)
 
     def __build_job(self, params, interval=60):
-        self.__call_server_method(self, "build_job", interval,
-                                  self.name, params)
+        self.__call_server_method("build_job", interval, self.name, params)
 
     def __base_server_url(self, interval=60):
-        return self.__call_server_method(self, "base_server_url", interval)
+        return self.__call_server_method("base_server_url", interval)
 
     def __get_job_prop(self, job, method, interval, *args):
         """
@@ -117,17 +116,16 @@ class JenkinsProject(object):
         raise e
 
     def __get_build(self, job, buildid, interval=60):
-        return self.__get_job_prop(self, job, "get_build", interval, buildid)
+        return self.__get_job_prop(job, "get_build", interval, buildid)
 
     def __get_build_ids(self, job, interval=60):
-        return self.__get_job_prop(self, job, "get_build_ids", interval)
+        return self.__get_job_prop(job, "get_build_ids", interval)
 
     def __get_last_build(self, job, interval=60):
-        return self.__get_job_prop(self, job, "get_last_build", interval)
+        return self.__get_job_prop(job, "get_last_build", interval)
 
     def __get_next_build_number(self, job, interval=60):
-        return self.__get_job_prop(self, job, "get_next_build_number",
-                                   interval)
+        return self.__get_job_prop(job, "get_next_build_number", interval)
 
     def _wait_and_get_build(self, buildid):
         job = self.__get_job()
