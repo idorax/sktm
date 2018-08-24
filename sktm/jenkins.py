@@ -79,6 +79,13 @@ class JenkinsProject(object):
     def __get_job(self, interval=60):
         return self.__call_server_method(self, "get_job", interval, self.name)
 
+    def __build_job(self, params, interval=60):
+        self.__call_server_method(self, "build_job", interval,
+                                  self.name, params)
+
+    def __base_server_url(self, interval=60):
+        return self.__call_server_method(self, "base_server_url", interval)
+
     def __get_job_prop(self, job, method, interval, *args):
         """
         Get property of Jenkins job. Retry Jenkins self.retry_cnt times
@@ -304,9 +311,7 @@ class JenkinsProject(object):
         Result:
             The URL of the build result.
         """
-        return join_with_slash(self.server.base_server_url(),
-                               "job",
-                               str(buildid))
+        return join_with_slash(self.__base_server_url(), "job", str(buildid))
 
     def get_result(self, buildid):
         """
@@ -399,7 +404,7 @@ class JenkinsProject(object):
         logging.debug(params)
         job = self.__get_job()
         expected_id = self.__get_next_build_number(job)
-        self.server.build_job(self.name, params)
+        self.__build_job(params)
         build = self.find_build(params, expected_id)
         logging.info("submitted build: %s", build)
         return build.get_number()
