@@ -57,10 +57,8 @@ class JenkinsProject(object):
             interval:   Seconds to sleep before retrying.
             *args:      The args of method of self.server.
 
-        Return:
-            what the method of self.server return if succeed, else raise the
-            last exception after retry self.retry_cnt times. Note it will
-            directly raise AttributeError if the method is invalid.
+        Returns:
+            Return value of the called method.
         """
         func = getattr(self.server, method)
 
@@ -68,11 +66,11 @@ class JenkinsProject(object):
             try:
                 return func(*args)
             except Exception as exc:
-                logging.warning("catch %s: %s", type(exc), exc)
-                logging.info("now sleep %ds and try again", interval)
+                logging.warning("Caught %s: %s", type(exc), exc)
+                logging.info("Waiting %ds before retrying", interval)
                 time.sleep(interval)
 
-        logging.error("fail to %s after retry %d times",
+        logging.error("Failed to %s (retried %d times)",
                       method.replace('_', ' '), self.retry_cnt)
         raise exc
 
@@ -92,14 +90,12 @@ class JenkinsProject(object):
 
         Args:
             job:        Jenkins job.
-            method:     Method of job.
+            method:     Method of the job.
             interval:   Seconds to sleep before retrying.
             *args:      The args of method of job.
 
-        Return:
-            job property if succeed, else raise the last exception after retry
-            self.retry_cnt times. Note it will directly raise AttributeError
-            if the method is invalid.
+        Returns:
+            Job property caller asked for.
         """
         func = getattr(job, method)
 
@@ -107,11 +103,11 @@ class JenkinsProject(object):
             try:
                 return func(*args)
             except Exception as exc:
-                logging.warning("catch %s: %s", type(exc), exc)
-                logging.info("now sleep %ds and try again", interval)
+                logging.warning("Caught %s: %s", type(exc), exc)
+                logging.info("Waiting %ds before retrying", interval)
                 time.sleep(interval)
 
-        logging.error("fail to %s after retry %d times",
+        logging.error("Failed to %s (retried %d times)",
                       method.replace('_', ' '), self.retry_cnt)
         raise exc
 
