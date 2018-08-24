@@ -68,11 +68,6 @@ class TestInit(unittest.TestCase):
         self.assertEqual(self.watcher_obj.baseref, baseref)
         self.assertEqual(self.watcher_obj.cfgurl, cfgurl)
 
-    def test_set_restapi(self):
-        """Ensure set_restapi() sets self.restapi properly."""
-        self.watcher_obj.set_restapi(True)
-        self.assertEqual(self.watcher_obj.restapi, True)
-
     @mock.patch('sktm.watcher.check_pending', Mock(return_value=True))
     @mock.patch('logging.info')
     def test_wait_for_pending_done(self, mock_logging):

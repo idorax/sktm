@@ -158,9 +158,8 @@ def cmd_patchwork(sw, cfg):
     logging.info("checking patchwork: %s [%s]", cfg.get("baseurl"),
                  cfg.get("project"))
     sw.set_baseline(cfg.get("repo"), cfgurl=cfg.get("cfgurl"))
-    sw.set_restapi(cfg.get("restapi"))
     sw.add_pw(cfg.get("baseurl"), cfg.get("project"), cfg.get("lastpatch"),
-              cfg.get("apikey"), cfg.get('skip'))
+              cfg.get('restapi'), cfg.get("apikey"), cfg.get('skip'))
     sw.check_patchwork()
 
 

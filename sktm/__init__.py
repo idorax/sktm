@@ -61,9 +61,6 @@ class watcher(object):
         self.pj = list()
         # List of Patchwork interfaces
         self.pw = list()
-        # True if REST-based Patchwork interfaces should be created,
-        # False if XML RPC-based Patchwork interfaces should be created
-        self.restapi = False
         # Baseline-related attributes, set by set_baseline() call
         self.baserepo = None
         self.baseref = None
@@ -82,28 +79,15 @@ class watcher(object):
         self.baseref = ref
         self.cfgurl = cfgurl
 
-    # FIXME The argument should not have a default
-    # FIXME This function should likely not exist
-    def set_restapi(self, restapi=False):
-        """
-        Set the type of the next added Patchwork interface.
-
-        Args:
-            restapi:    True if the next added interface will be REST-based,
-                        false, if it will be XML RPC-based.
-        """
-        self.restapi = restapi
-
     def cleanup(self):
         for (pjt, bid, _) in self.pj:
             logging.warning("Quiting before job completion: %d/%d", bid, pjt)
 
     # FIXME Pass patchwork type via arguments, or pass a whole interface
-    def add_pw(self, baseurl, pname, lpatch=None, apikey=None, skip=[]):
+    def add_pw(self, baseurl, pname, lpatch=None, restapi=False, apikey=None,
+               skip=[]):
         """
         Add a Patchwork interface with specified parameters.
-        Add an XML RPC-based interface, if self.restapi is false,
-        add a REST-based interface, if self.restapi is true.
 
         Args:
             baseurl:        Patchwork base URL.
@@ -112,11 +96,13 @@ class watcher(object):
                             RPC-based interface. Patch timestamp, if adding a
                             REST-based interface. Can be omitted to
                             retrieve one from the database.
+            restapi:        True if the REST API to Patchwork should be used.
+                            False implies XMLRPC interface.
             apikey:         Patchwork REST API authentication token.
             skip:           List of additional regex patterns to skip in patch
                             names, case insensitive.
         """
-        if self.restapi:
+        if restapi:
             pw = sktm.patchwork.PatchworkV2Project(
                 baseurl, pname, lpatch, apikey, skip
             )
@@ -229,7 +215,7 @@ class watcher(object):
 
         logging.info('patch: [%d] %s', patch_id, patch.get('name'))
 
-        if self.restapi:
+        if isinstance(interface, sktm.patchwork.PatchworkV2Project):
             project_id = int(patch.get('project').get('id'))
         else:
             project_id = int(patch.get('project_id'))
