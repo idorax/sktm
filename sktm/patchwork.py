@@ -583,56 +583,6 @@ class PatchworkV2Project(PatchworkProject):
 
         return series_list
 
-    def __get_patchsets_from_events(self, url):
-        """
-        Retrieve a list of applicable series summaries for the specified
-        event list URL. Series and patches which names match one of skip
-        patterns (self.skip) are excluded.
-
-        Args:
-            url:    The event list URL to retrieve series summaries for.
-
-        Returns:
-            A list of SeriesSummary objects.
-        """
-        series_list = list()
-
-        logging.debug("get_patchsets_from_events: %s", url)
-        response = requests.get(url)
-
-        if response.status_code != 200:
-            raise Exception("Can't get events from url %s (%d)" %
-                            (url, response.status_code))
-
-        edata = response.json()
-        # If there is a single event returned we get a dict, not a list with
-        # a single element. Fix this inconsistency for easier processing.
-        if not isinstance(edata, list):
-            edata = [edata]
-
-        # For each event
-        for event in edata:
-            # TODO Are these the only possible events?
-            series = event.get("payload", {}).get("series")
-            if series is None:
-                continue
-
-            edate = dateutil.parser.parse(event.get("date"))
-            if self.nsince is None or self.nsince < edate:
-                self.nsince = edate
-
-            series_list += self.__get_series_from_url(series.get("url"))
-
-        link = response.headers.get("Link")
-        if link is not None:
-            m = re.match("<(.*)>; rel=\"next\"", link)
-            if m:
-                nurl = m.group(1)
-                # TODO Limit recursion
-                series_list += self.__get_patchsets_from_events(nurl)
-
-        return series_list
-
     def __set_patch_check(self, patch, payload):
         """
         Add a patch "check" payload for the specified JSON representation of a
