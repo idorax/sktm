@@ -1138,7 +1138,6 @@ class PatchworkV1Project(PatchworkProject):
                 series_list.append(pset)
         return series_list
 
-    # TODO This shouldn't really skip patches to retrieve, should it?
     def get_patchsets(self, patchlist):
         """
         Retrieve a list of summaries of any complete series comprised by a
