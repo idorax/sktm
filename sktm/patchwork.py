@@ -830,7 +830,7 @@ class PatchworkV1Project(PatchworkProject):
             ver = rpc.pw_rpc_version()
             # check for normal patchwork1 xmlrpc version numbers
             if not (ver == [1, 3, 0] or ver == 1):
-                raise Exception("Unknown xmlrpc version %s", ver)
+                raise Exception("Unknown xmlrpc version %s" % ver)
 
         except xmlrpclib.Fault as err:
             if err.faultCode == 1 and \
@@ -839,14 +839,14 @@ class PatchworkV1Project(PatchworkProject):
                 rpc = RpcWrapper(rpc)
                 ver = rpc.pw_rpc_version()
                 if ver < 1010:
-                    raise Exception("Unsupported xmlrpc version %s", ver)
+                    raise Exception("Unsupported xmlrpc version %s" % ver)
 
                 # grab extra info for later parsing
                 self.fields = ['id', 'name', 'submitter', 'msgid',
                                ['root_comment', ['headers']],
                                'date', 'project_id']
             else:
-                raise Exception("Unknown xmlrpc fault: %s", err.faultString)
+                raise Exception("Unknown xmlrpc fault: %s" % err.faultString)
 
         return rpc
 
