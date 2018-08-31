@@ -106,8 +106,8 @@ def setup_parser():
     parser_patchwork.add_argument("repo", type=str, help="Base repo URL")
     parser_patchwork.add_argument("baseurl", type=str, help="Base URL")
     parser_patchwork.add_argument("project", type=str, help="Project name")
-    parser_patchwork.add_argument("--lastpatch", type=str, help="Last patch "
-                                  "(id for pw1; datetime for pw2)")
+    parser_patchwork.add_argument("--lastpatch", type=int,
+                                  help="Last patch ID")
     parser_patchwork.add_argument("--restapi", help="Use REST API",
                                   action="store_true", default=False)
     parser_patchwork.add_argument("--apikey", type=str,

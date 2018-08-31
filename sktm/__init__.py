@@ -92,9 +92,7 @@ class watcher(object):
         Args:
             baseurl:        Patchwork base URL.
             pname:          Patchwork project name.
-            lpatch:         Last processed patch. Patch ID, if adding an XML
-                            RPC-based interface. Patch timestamp, if adding a
-                            REST-based interface. Can be omitted to
+            lpatch:         ID of the last processed patch. Can be omitted to
                             retrieve one from the database.
             restapi:        True if the REST API to Patchwork should be used.
                             False implies XMLRPC interface.
@@ -120,7 +118,7 @@ class watcher(object):
                 pw.since = since
         else:
             pw = sktm.patchwork.PatchworkV1Project(
-                baseurl, pname, int(lpatch) if lpatch else None, skip
+                baseurl, pname, lpatch, skip
             )
 
             if lpatch is None:

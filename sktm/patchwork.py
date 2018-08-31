@@ -436,26 +436,28 @@ class PatchworkV2Project(PatchworkProject):
     """
     A Patchwork REST interface
     """
-    def __init__(self, baseurl, projectname, since, apikey=None, skip=[]):
+    def __init__(self, baseurl, projectname, lastpatch, apikey=None, skip=[]):
         """
         Initialize a Patchwork REST interface.
 
         Args:
             baseurl:        Patchwork base URL.
             projectname:    Patchwork project name, or None.
-            since:          Last processed patch timestamp in a format
-                            accepted by dateutil.parser.parse. Patches with
-                            this or earlier timestamp will be ignored.
+            lastpatch:      ID of the last processed patch. Only patches newer
+                            than this one will be processed.
             apikey:         Patchwork API authentication token.
             skip:           List of additional regex patterns to skip in patch
                             names, case insensitive.
         """
-        # Last processed patch timestamp in a dateutil.parser.parse format
-        self.since = since
         # Patchwork API authentication token.
         self.apikey = apikey
         # JSON representation of API URLs retrieved from the Patchwork server
         self.apiurls = self.__get_apiurls(baseurl)
+        # Get the datetime of the passed lastpatch to use in patch filtering
+        if lastpatch:
+            self.since = self.get_patch_by_id(lastpatch).get('date')
+        else:
+            self.since = None
         super(PatchworkV2Project, self).__init__(baseurl, projectname, skip)
 
     def _get_project_id(self, project_name):

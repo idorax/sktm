@@ -305,9 +305,8 @@ commits up-to-date, to allow newer patches to apply.
 ### Testing first patches
 
 Once your `baseline` command has finished, you will be able to start checking
-patches from a Patchwork instance. However, you would need to specify the
-patch to start from on the first run, and would need to use somewhat
-different commands for Patchwork v1 and v2 instances.
+patches from a Patchwork instance. Here are very similar examples of commands
+to be used with the Patchwork 1 and Patchwork 2 instances:
 
 For Patchwork v1 run:
 
@@ -322,22 +321,18 @@ and for Patchwork v2 run:
     sktm -v --jjname <JENKINS_PROJECT> patchwork \
          <GIT_REPO_URL> \
          --restapi <PATCHWORK_BASE_URL> <PATCHWORK_PROJECT> \
-         --lastpatch <PATCHWORK_TIMESTAMP> \
+         --lastpatch <PATCHWORK_PATCH_ID> \
          --skip <PATTERN> [... <PATTERN>]
 
 Here, `<PATCHWORK_BASE_URL>` would be the base URL of the Patchwork instance,
 `<PATCHWORK_PROJECT>` - the name of the Patchwork project to check for new
 patches. The `<PATCHWORK_PATCH_ID>` would be the ID of the newest patch (as
-seen in Patchwork URLs) to ignore. All patches with greater IDs will be
-considered for testing. `<PATCHWORK_TIMESTAMP>` would be a Patchwork instance
-timestamp of the newest patch to ignore, in a format acceptable by Python's
-`dateutil.parser` module, e.g. from the `Date:` header of a patch message. All
-patches with greater timestamps will be considered for testing. Finally, a list
-of regex `<PATTERN>`s (case insensitive) can be provided to skip testing of
-patches which match the patterns. This last option is useful for example if the
-Patchwork project contains patches for additional tools besides kernel ones.
-By default, git pull requests and tools from netdev list (`iproute`, `ethtool`
-etc.) are skipped.
+seen in Patchwork URLs) to ignore. All newer patches (with greater IDs) will be
+considered for testing. Finally, a list of regex `<PATTERN>`s (case
+insensitive) can be provided to skip testing of patches which match the
+patterns. This last option is useful for example if the Patchwork project
+contains patches for additional tools besides kernel ones. By default, git pull
+requests and tools from netdev list (`iproute`, `ethtool` etc.) are skipped.
 
 E.g. this command would test all patches after the one with ID 10363835, from
 the "scsi" tree's Patchwork v1 instance, applying them onto the latest
@@ -354,7 +349,7 @@ Patchwork v2 instance after `Thu,  3 May 2018 14:35:00 +0100` timestamp:
     sktm -v --jjname sktm patchwork \
          git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git \
          --restapi https://patchwork.ozlabs.org netdev \
-         --lastpatch 'Thu,  3 May 2018 14:35:00 +0100'
+         --lastpatch 823457
 
 Note: do not run the commands above with the `--lastpatch` option value
 intact, as that would likely result in a lot of Jenkins jobs submitted,
