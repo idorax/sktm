@@ -107,7 +107,6 @@ class watcher(object):
                 baseurl, pname, lpatch, apikey, skip
             )
 
-            # FIXME Figure out the last patch first, then create the interface
             if lpatch is None:
                 lcdate = self.db.get_last_checked_patch_date(baseurl,
                                                              pw.project_id)
@@ -124,7 +123,6 @@ class watcher(object):
                 baseurl, pname, int(lpatch) if lpatch else None, skip
             )
 
-            # FIXME Figure out the last patch first, then create the interface
             if lpatch is None:
                 lcpatch = self.db.get_last_checked_patch(baseurl,
                                                          pw.project_id)
