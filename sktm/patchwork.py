@@ -452,8 +452,6 @@ class PatchworkV2Project(PatchworkProject):
         """
         # Last processed patch timestamp in a dateutil.parser.parse format
         self.since = since
-        # TODO Describe
-        self.nsince = None
         # Patchwork API authentication token.
         self.apikey = apikey
         # JSON representation of API URLs retrieved from the Patchwork server
