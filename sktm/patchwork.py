@@ -418,6 +418,19 @@ class PatchworkProject(object):
 
         return "mbox"
 
+    def _get_project_id(self, project_name):
+        """
+        Get project ID based on its name. Child classes need to implement
+        this method.
+
+        Args:
+            project_name:  The name of the project to retrieve.
+
+        Returns:
+            Integer representing project's ID.
+        """
+        raise NotImplementedError
+
 
 class PatchworkV2Project(PatchworkProject):
     """
@@ -942,28 +955,28 @@ class PatchworkV1Project(PatchworkProject):
         pass
 
     # TODO Move this to __init__ or make it a class method
-    def _get_project_id(self, projectname):
+    def _get_project_id(self, project_name):
         """
         Retrieve ID of the project with the specified name.
 
         Args:
-            projectname:    The name of the project to retrieve ID for.
+            project_name:    The name of the project to retrieve ID for.
 
         Returns:
-            The project name.
+            Integer representing project's ID.
 
         Raises:
             A string containing an error message, if the project with the
             specified name was not found.
         """
-        plist = self.rpc.project_list(projectname)
+        plist = self.rpc.project_list(project_name)
         for project in plist:
-            if project.get("linkname") == projectname:
+            if project.get("linkname") == project_name:
                 pid = int(project.get("id"))
-                logging.debug("%s -> %d", projectname, pid)
+                logging.debug("%s -> %d", project_name, pid)
                 return pid
 
-        raise Exception("Couldn't find project %s" % projectname)
+        raise Exception("Couldn't find project %s" % project_name)
 
     # FIXME This doesn't just parse a patch. Name/refactor accordingly.
     def __parse_patch(self, patch):
