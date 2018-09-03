@@ -332,6 +332,7 @@ class JenkinsProject(object):
                 ("skt.cmd_merge", TestResult.MERGE_FAILURE),
                 ("skt.cmd_build", TestResult.BUILD_FAILURE),
                 ("skt.cmd_run", TestResult.TEST_FAILURE),
+                ("skt.cmd_console_check", TestResult.TRACE_FOUND)
             ]
             for (step, failure_result) in step_failure_result_list:
                 if set(self.__get_data_list(buildid, step, "status")) & \

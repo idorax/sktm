@@ -22,6 +22,7 @@ class TestResult(enum.IntEnum):
     MERGE_FAILURE = 1
     BUILD_FAILURE = 2
     TEST_FAILURE = 4
+    TRACE_FOUND = 5
 
 
 class JobType(enum.IntEnum):
