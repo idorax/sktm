@@ -27,7 +27,7 @@
         def beakerjob_file = "beakerjob.xml"
         def beakerjob_text = """\
             <job>
-              <whiteboard>skt ##KVER## ##UID## ##HOSTNAME##[noavc] [noselinux]</whiteboard>
+              <whiteboard>skt ##KVER## [noavc] [noselinux]</whiteboard>
               <recipeSet>
                 <recipe ks_meta="harness='restraint-rhts beakerlib-redhat'"
                         kernel_options="selinux=0"
@@ -43,7 +43,6 @@
                   <hostRequires>
                     <and>
                       <arch op="=" value="x86_64"/>
-                      ##HOSTNAMETAG##
                     </and>
                   </hostRequires>
                   <task name="/distribution/install" role="STANDALONE"/>
