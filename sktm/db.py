@@ -442,7 +442,10 @@ class SktDb(object):
         """
         baserepo_id = self.__get_repoid(baserepo)
 
-        testrun_id = self.__commit_testrun(result, build_id)
+        self.cur.execute('INSERT INTO testrun(result_id, build_id) '
+                         'VALUES(?,?)',
+                         (result.value, build_id))
+        testrun_id = self.cur.lastrowid
 
         prev_res = self.__get_baselineresult(baserepo, commithash)
         logging.debug("previous result: %s", prev_res)
@@ -481,22 +484,6 @@ class SktDb(object):
             # TODO: Can accumulate per-project list instead of doing it one by
             # one
             self.__unset_patchset_pending(baseurl, [patch_id])
-
-    def __commit_testrun(self, result, buildid):
-        """Add a test run to the database.
-
-        Args:
-            result:     Result of the test run.
-            build_id:   The build ID of the test run.
-
-        """
-        logging.debug("__commit_testrun: result=%s; buildid=%d",
-                      result, buildid)
-        self.cur.execute('INSERT INTO testrun(result_id, build_id) '
-                         'VALUES(?,?)',
-                         (result.value, buildid))
-        self.conn.commit()
-        return self.cur.lastrowid
 
     def __commit_patch(self, patch_id, patch_name, patch_url, baseurl,
                        project_id, patch_date):

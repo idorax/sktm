@@ -21,6 +21,7 @@ import unittest
 import mock
 
 from sktm.db import SktDb
+from sktm.misc import TestResult
 
 
 class TestDb(unittest.TestCase):  # pylint: disable=too-many-public-methods
@@ -110,34 +111,6 @@ class TestDb(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
         mock_get_sourceid.assert_called_once()
         mock_commit_patch.assert_called_once()
-        mock_log.assert_called()
-
-        # Ensure the data was committed to the database
-        mock_sql.connect().commit.assert_called()
-
-    @mock.patch('logging.debug')
-    @mock.patch('sktm.db.sqlite3')
-    def test_commit_testrun(self, mock_sql, mock_log):
-        """Ensure __commit_testrun() creates a testrun record."""
-        # pylint: disable=W0212,E1101
-        testdb = SktDb(self.database_file)
-
-        result = mock.Mock()
-        result.value = 'ok'
-
-        mock_sql.connect().cursor().lastrowid = 1
-        result = testdb._SktDb__commit_testrun(result, '2')
-
-        self.assertEqual(result, 1)
-
-        # Check if we have a proper INSERT query executed
-        execute_call_args = mock_sql.connect().cursor().execute.call_args[0]
-        self.assertIn('INSERT INTO testrun', execute_call_args[0])
-        self.assertTupleEqual(
-            ('ok', '2'),
-            execute_call_args[1]
-        )
-
         mock_log.assert_called()
 
         # Ensure the data was committed to the database
@@ -439,30 +412,29 @@ class TestDb(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
     @mock.patch('logging.debug')
     @mock.patch('sktm.db.SktDb._SktDb__get_baselineresult')
-    @mock.patch('sktm.db.SktDb._SktDb__commit_testrun')
     @mock.patch('sktm.db.SktDb._SktDb__get_repoid')
     @mock.patch('sktm.db.sqlite3')
     def test_update_baseline_new(self, mock_sql, mock_get_repoid,
-                                 mock_commit_testrun, mock_get_baselineresult,
-                                 mock_log):
+                                 mock_get_baselineresult, mock_log):
         """Ensure new baslines are created when one doesn't exist."""
         # pylint: disable=too-many-arguments
         testdb = SktDb(self.database_file)
 
         mock_get_repoid.return_value = '1'
-        mock_commit_testrun.return_value = '1'
         mock_get_baselineresult.return_value = None
+        result = TestResult.SUCCESS
 
-        testdb.update_baseline('baserepo', 'abcdef', '2018-06-01', '1', '1')
+        testdb.update_baseline('baserepo', 'abcd', '2018-06-01', result, '1')
 
         # Ensure a debug log was written
         mock_log.assert_called()
 
-        # Check if we have a proper INSERT query executed
         execute_call_args = mock_sql.connect().cursor().execute.call_args[0]
+        # Check if we have a proper INSERT query executed
         self.assertIn('INSERT INTO baseline', execute_call_args[0])
+        # Check the arguments of the final query
         self.assertTupleEqual(
-            ('1', 'abcdef', '2018-06-01', '1'),
+            ('1', 'abcd', '2018-06-01', mock_sql.connect().cursor().lastrowid),
             execute_call_args[1]
         )
 
@@ -471,30 +443,29 @@ class TestDb(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
     @mock.patch('logging.debug')
     @mock.patch('sktm.db.SktDb._SktDb__get_baselineresult')
-    @mock.patch('sktm.db.SktDb._SktDb__commit_testrun')
     @mock.patch('sktm.db.SktDb._SktDb__get_repoid')
     @mock.patch('sktm.db.sqlite3')
     def test_update_baseline(self, mock_sql, mock_get_repoid,
-                             mock_commit_testrun, mock_get_baselineresult,
-                             mock_log):
+                             mock_get_baselineresult, mock_log):
         """Ensure baseline is updated when current result is newer."""
         # pylint: disable=too-many-arguments
         testdb = SktDb(self.database_file)
 
         mock_get_repoid.return_value = '1'
-        mock_commit_testrun.return_value = '1'
         mock_get_baselineresult.return_value = 1
+        result = TestResult.SUCCESS
 
-        testdb.update_baseline('baserepo', 'abcdef', '2018-06-01', '2', '1')
+        testdb.update_baseline('baserepo', 'abcdef', '2018-06-01', result, '1')
 
         # Ensure a debug log was written
         mock_log.assert_called()
 
-        # Check if we have a proper INSERT query executed
         execute_call_args = mock_sql.connect().cursor().execute.call_args[0]
+        # Check if we have a proper UPDATE query executed
         self.assertIn('UPDATE baseline', execute_call_args[0])
+        # Check the arguments of the final query
         self.assertTupleEqual(
-            ('1', 'abcdef', '1'),
+            (mock_sql.connect().cursor().lastrowid, 'abcdef', '1'),
             execute_call_args[1]
         )
 
