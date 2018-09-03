@@ -762,16 +762,15 @@ class PatchworkV2Project(PatchworkProject):
         # For each patch ID
         for pid in patchlist:
             patch = self.get_patch_by_id(pid)
-            if patch:
-                # For each series the patch belongs to
-                for series in patch.get("series"):
-                    sid = series.get("id")
-                    if sid not in seen:
-                        series_list += self.__get_series_from_url(
-                            join_with_slash(self.apiurls.get("series"),
-                                            str(sid))
-                        )
-                        seen.add(sid)
+            # For each series the patch belongs to
+            for series in patch.get("series"):
+                sid = series.get("id")
+                if sid not in seen:
+                    series_list += self.__get_series_from_url(
+                        join_with_slash(self.apiurls.get("series"),
+                                        str(sid))
+                    )
+                    seen.add(sid)
 
         return series_list
 
@@ -908,8 +907,7 @@ class PatchworkV1Project(PatchworkProject):
             patch = self.rpc.patch_get(pid, self.fields)
 
         if patch is None or patch == {}:
-            logging.warning("Failed to get data for patch %d", pid)
-            patch = None
+            raise Exception('Can\'t get patch by id %d)'.format(pid))
 
         self.__update_patch_name(patch)
 
@@ -1169,8 +1167,7 @@ class PatchworkV1Project(PatchworkProject):
         logging.debug("get_patchsets: %s", patchlist)
         for pid in patchlist:
             patch = self.get_patch_by_id(pid)
-            if patch:
-                pset = self.__parse_patch(patch)
-                if pset:
-                    series_list.append(pset)
+            pset = self.__parse_patch(patch)
+            if pset:
+                series_list.append(pset)
         return series_list

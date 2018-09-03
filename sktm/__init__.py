@@ -206,9 +206,6 @@ class watcher(object):
         baseurl = match.group(1)
         patch_id = int(match.group(2))
         patch = interface.get_patch_by_id(patch_id)
-        if patch is None:
-            raise Exception('Can\'t get data for %s' % patch_url)
-
         logging.info('patch: [%d] %s', patch_id, patch.get('name'))
 
         if isinstance(interface, sktm.patchwork.PatchworkV2Project):
