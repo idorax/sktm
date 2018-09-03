@@ -459,7 +459,6 @@ class SktDb(object):
                              'testrun_id) VALUES(?,?,?,?)',
                              (baserepo_id, commithash, commitdate,
                               testrun_id))
-            self.conn.commit()
         else:
             # This commitid has been seen before and we need to update the
             # testing status for it
@@ -468,7 +467,8 @@ class SktDb(object):
             self.cur.execute('UPDATE baseline SET testrun_id = ? '
                              'WHERE commitid = ? AND baserepo_id = ?',
                              (testrun_id, commithash, baserepo_id))
-            self.conn.commit()
+
+        self.conn.commit()
 
     def commit_tested(self, patches):
         """Saved tested patches.
