@@ -282,7 +282,16 @@ class JenkinsProject(object):
             The list of Patchwork patch URLs, in the order the patches should
             be applied in.
         """
-        return self.__get_cfg_data_uniform(buildid, "skt.cmd_merge", "pw")
+        merge_data = self.__get_cfg_data_uniform(buildid,
+                                                 "skt.cmd_merge",
+                                                 'merge_queue')
+        patch_list = [patch_url for merge_type, patch_url in merge_data
+                      if merge_type == 'pw']
+        if len(merge_data) != len(patch_list):
+            raise Exception('Only "pw" type of applied patches is supported '
+                            'but this is the data we got: %s' % merge_data)
+
+        return patch_list
 
     def get_baseretcode(self, buildid):
         """
