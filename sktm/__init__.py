@@ -134,8 +134,7 @@ class watcher(object):
                 pw.lastpatch = lpatch
         self.pw.append(pw)
 
-    # FIXME Fix the name, this function doesn't check anything by itself
-    def check_baseline(self):
+    def enqueue_baseline_job(self):
         """Submit a build for baseline"""
         self.pj.append((JobType.BASELINE,
                         self.jk.build(baserepo=self.baserepo,
