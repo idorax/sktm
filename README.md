@@ -41,9 +41,9 @@ Start Jenkins:
 From now on the documentation assumes Jenkins is serving HTTP requests on the
 default URL of http://localhost:8080/.
 
-Make sure you have Python 2 installed to be able to run sktm:
+Make sure you have Python 2 and git installed to be able to run sktm:
 
-    sudo dnf install -y python2
+    sudo dnf install -y python2 git
 
 Install sktm requirements:
 

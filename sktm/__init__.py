@@ -134,14 +134,37 @@ class watcher(object):
                 pw.lastpatch = lpatch
         self.pw.append(pw)
 
+    def get_commit_hash(self, repo, ref):
+        """
+        Return always a git commit hash. If ref is a commit hash, it will
+        return it as is. If it is a tag it will be converted to a git commit
+        hash.
+
+        Args:
+            repo:   Git repository URL.
+            ref:    Git reference to test.
+        """
+        if re.match(r'\b[0-9a-f]{7,40}\b', ref):
+            return ref
+        commithash, remote_ref = subprocess.check_output(
+            ['git', 'ls-remote', repo, ref]
+        ).split()
+        return commithash
+
     def enqueue_baseline_job(self):
-        """Submit a build for baseline"""
-        self.pj.append((JobType.BASELINE,
-                        self.jk.build(baserepo=self.baserepo,
-                                      ref=self.baseref,
-                                      baseconfig=self.cfgurl,
-                                      makeopts=self.makeopts),
-                        None))
+        """Enqueue a build for baseline if it was not checked already"""
+        current_commit = self.get_commit_hash(self.baserepo, self.baseref)
+        last_commit_checked = self.db.get_last_checked_baseline(self.baserepo)
+        if current_commit != last_commit_checked:
+            self.pj.append((JobType.BASELINE,
+                            self.jk.build(baserepo=self.baserepo,
+                                          ref=self.baseref,
+                                          baseconfig=self.cfgurl,
+                                          makeopts=self.makeopts),
+                            None))
+        else:
+            logging.info('Baseline %s@%s already tested',
+                         self.baserepo, self.baseref)
 
     def filter_patchsets(self, series_summary_list):
         """

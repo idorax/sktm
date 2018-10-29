@@ -555,3 +555,15 @@ class SktDb(object):
             print("most recent stable commit: {} ({})".format(
                 latest, self.__get_commitdate(burl, latest)))
             print("---")
+
+    def get_last_checked_baseline(self, repo):
+        repo_id = self.__get_repoid(repo)
+        self.cur.execute('SELECT baseline.commitid FROM baseline WHERE '
+                         'baserepo_id=? '
+                         'ORDER BY baseline.commitdate DESC LIMIT 1',
+                         (repo_id,))
+        result = self.cur.fetchone()
+        if not result:
+            return None
+
+        return result[0]
