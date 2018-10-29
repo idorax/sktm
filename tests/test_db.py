@@ -471,3 +471,20 @@ class TestDb(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
         # Ensure the data was committed to the database
         mock_sql.connect().commit.assert_called()
+
+    @mock.patch('sktm.db.sqlite3')
+    def test_get_last_checked_baseline(self, mock_sql):
+        """
+        Ensure get_last_checked_baseline() retrieves a commitid or None if
+        there is no result.
+        """
+        testdb = SktDb(self.database_file)
+        mock_sql.connect().cursor().fetchone.return_value = ['deadbeafdeaf']
+        result = testdb.get_last_checked_baseline('git://example.com/repo')
+
+        self.assertEqual(result, 'deadbeafdeaf')
+
+        mock_sql.connect().cursor().fetchone.return_value = []
+        result = testdb.get_last_checked_baseline('git://example.com/repo')
+
+        self.assertEqual(result, None)

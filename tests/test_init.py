@@ -74,3 +74,48 @@ class TestInit(unittest.TestCase):
         """Ensure wait_for_pending() logs a message when jobs are complete."""
         self.watcher_obj.wait_for_pending()
         mock_logging.assert_called_with('no more pending jobs')
+
+    def test_get_commit_hash(self):
+        """Ensure get_commit_hash gets always a git commit hash"""
+        expected_hash = '123deadc0de321'
+        commit_hash = self.watcher_obj.get_commit_hash('url', expected_hash)
+        self.assertEqual(expected_hash, commit_hash)
+        deadbeaf = 'deadbeaf' * 5
+        expected_ls_remote = '{} master'.format(deadbeaf)
+        mock_check_output = Mock(return_value=expected_ls_remote)
+        with mock.patch('subprocess.check_output', mock_check_output):
+            master_hash = self.watcher_obj.get_commit_hash('url', 'master')
+            self.assertEqual(deadbeaf, master_hash)
+
+    @mock.patch('logging.info')
+    def test_check_baseline(self, mock_logging):
+        """
+        Ensure enqueue_baseline_job only enqueues a new job if it wasn't
+        checked already.
+        """
+        baserepo = 'git://example.com/repo'
+        baseref = 'master'
+        cfgurl = "http://example.com/config.txt"
+
+        self.watcher_obj.set_baseline(
+            repo=baserepo,
+            ref=baseref,
+            cfgurl=cfgurl
+        )
+
+        self.watcher_obj.get_commit_hash = Mock(return_value='c0de4bee4')
+        self.watcher_obj.enqueue_baseline_job()
+        self.watcher_obj.jk.build.assert_called_with(
+            baseconfig=cfgurl,
+            baserepo=baserepo,
+            makeopts=None,
+            ref=baseref,
+        )
+
+        self.watcher_obj.get_commit_hash = Mock(return_value='deadcode')
+        self.watcher_obj.db.get_last_checked_baseline = Mock(
+            return_value='deadcode'
+        )
+        self.watcher_obj.enqueue_baseline_job()
+        mock_logging.assert_called_with('Baseline %s@%s already tested',
+                                        baserepo, baseref)
