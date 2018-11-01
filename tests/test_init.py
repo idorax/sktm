@@ -91,7 +91,8 @@ class TestInit(unittest.TestCase):
     def test_check_baseline(self, mock_logging):
         """
         Ensure enqueue_baseline_job only enqueues a new job if it wasn't
-        checked already.
+        checked already and check if the job is enqueued when force option is
+        set.
         """
         baserepo = 'git://example.com/repo'
         baseref = 'master'
@@ -119,3 +120,18 @@ class TestInit(unittest.TestCase):
         self.watcher_obj.enqueue_baseline_job()
         mock_logging.assert_called_with('Baseline %s@%s already tested',
                                         baserepo, baseref)
+
+        self.watcher_obj.jk.build.reset_mock()
+        self.watcher_obj.set_baseline(
+            repo=baserepo,
+            ref=baseref,
+            cfgurl=cfgurl,
+            force=True,
+        )
+        self.watcher_obj.enqueue_baseline_job()
+        self.watcher_obj.jk.build.assert_called_with(
+            baseconfig=cfgurl,
+            baserepo=baserepo,
+            makeopts=None,
+            ref=baseref,
+        )

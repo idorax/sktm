@@ -65,8 +65,9 @@ class watcher(object):
         self.baserepo = None
         self.baseref = None
         self.cfgurl = None
+        self.force_enqueue_job = False
 
-    def set_baseline(self, repo, ref="master", cfgurl=None):
+    def set_baseline(self, repo, ref="master", cfgurl=None, force=False):
         """
         Set baseline parameters.
 
@@ -74,10 +75,12 @@ class watcher(object):
             repo:   Git repository URL.
             ref:    Git reference to test.
             cfgurl: Kernel configuration URL.
+            force:  Force enqueue the job
         """
         self.baserepo = repo
         self.baseref = ref
         self.cfgurl = cfgurl
+        self.force_enqueue_job = force
 
     def cleanup(self):
         for (pjt, bid, _) in self.pj:
@@ -155,7 +158,7 @@ class watcher(object):
         """Enqueue a build for baseline if it was not checked already"""
         current_commit = self.get_commit_hash(self.baserepo, self.baseref)
         last_commit_checked = self.db.get_last_checked_baseline(self.baserepo)
-        if current_commit != last_commit_checked:
+        if self.force_enqueue_job or current_commit != last_commit_checked:
             self.pj.append((JobType.BASELINE,
                             self.jk.build(baserepo=self.baserepo,
                                           ref=self.baseref,

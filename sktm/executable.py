@@ -100,6 +100,8 @@ def setup_parser():
     parser_baseline = subparsers.add_parser("baseline")
     parser_baseline.add_argument("repo", type=str, help="Base repo URL")
     parser_baseline.add_argument("ref", type=str, help="Base repo ref to test")
+    parser_baseline.add_argument("--force", action='store_true',
+                                 help="Force enqueue the job")
     parser_baseline.set_defaults(func=cmd_baseline)
 
     parser_patchwork = subparsers.add_parser("patchwork")
@@ -150,7 +152,8 @@ def setup_logging(verbose):
 
 def cmd_baseline(sw, cfg):
     logging.info("Enqueue baseline: %s [%s]", cfg.get("repo"), cfg.get("ref"))
-    sw.set_baseline(cfg.get("repo"), cfg.get("ref"), cfg.get("cfgurl"))
+    sw.set_baseline(cfg.get("repo"), cfg.get("ref"), cfg.get("cfgurl"),
+                    cfg.get("force"))
     sw.enqueue_baseline_job()
 
 
