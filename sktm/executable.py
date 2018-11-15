@@ -16,6 +16,10 @@ import argparse
 import ConfigParser
 import logging
 import os
+import fcntl
+import errno
+import sys
+from contextlib import contextmanager
 import sktm.reporter
 import sktm
 import sktm.jenkins
@@ -46,6 +50,10 @@ def setup_parser():
                         action="count", default=0)
     parser.add_argument("--rc", help="Path to rc file", default="~/.sktmrc")
     parser.add_argument("--db", help="Path to db file", default="~/.sktm.db")
+    parser.add_argument(
+        "--lock-path",
+        help="Path used to avoid running two instances at the same time",
+    )
     parser.add_argument("--jurl", help="Jenkins URL")
     parser.add_argument("--jlogin", help="Jenkins login")
     parser.add_argument("--jpass", help="Jenkins password")
@@ -220,11 +228,34 @@ def load_config(args):
     return cfg
 
 
+@contextmanager
+def ensure_single_instance(lock_path):
+    fp = open(lock_path, 'w')
+    try:
+        fcntl.lockf(fp, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except IOError as error:
+        if error.errno == errno.EAGAIN:
+            sys.exit("There is another instance already running")
+        raise
+    yield
+
+
 def main():
-    """Handle the execution of sktm"""
+    """
+    Parse arguments and call to do_main checking if a single instance is
+    required.
+    """
     parser = setup_parser()
     args = parser.parse_args()
+    if args.lock_path:
+        with ensure_single_instance(args.lock_path):
+            do_main(args)
+    else:
+        do_main(args)
 
+
+def do_main(args):
+    """Handle the execution of sktm"""
     setup_logging(args.verbose)
     cfg = load_config(args)
     logging.debug("cfg=%s", cfg)
