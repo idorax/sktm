@@ -118,8 +118,8 @@ class TestInit(unittest.TestCase):
             return_value='deadcode'
         )
         self.watcher_obj.enqueue_baseline_job()
-        mock_logging.assert_called_with('Baseline %s@%s already tested',
-                                        baserepo, baseref)
+        mock_logging.assert_called_with('Baseline %s@%s [%s] already tested',
+                                        baserepo, baseref, 'deadcode')
 
         self.watcher_obj.jk.build.reset_mock()
         self.watcher_obj.set_baseline(

@@ -165,9 +165,11 @@ class watcher(object):
                                           baseconfig=self.cfgurl,
                                           makeopts=self.makeopts),
                             None))
+            logging.info("Baseline enqueued: %s@%s [%s]", self.baserepo,
+                         self.baseref, current_commit)
         else:
-            logging.info('Baseline %s@%s already tested',
-                         self.baserepo, self.baseref)
+            logging.info('Baseline %s@%s [%s] already tested',
+                         self.baserepo, self.baseref, current_commit)
 
     def filter_patchsets(self, series_summary_list):
         """
