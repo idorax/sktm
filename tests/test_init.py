@@ -110,7 +110,7 @@ class TestInit(unittest.TestCase):
             baseconfig=cfgurl,
             baserepo=baserepo,
             makeopts=None,
-            ref=baseref,
+            ref='c0de4bee4',
         )
 
         self.watcher_obj.get_commit_hash = Mock(return_value='deadcode')
@@ -133,5 +133,5 @@ class TestInit(unittest.TestCase):
             baseconfig=cfgurl,
             baserepo=baserepo,
             makeopts=None,
-            ref=baseref,
+            ref='deadcode',
         )

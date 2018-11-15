@@ -161,7 +161,7 @@ class watcher(object):
         if self.force_enqueue_job or current_commit != last_commit_checked:
             self.pj.append((JobType.BASELINE,
                             self.jk.build(baserepo=self.baserepo,
-                                          ref=self.baseref,
+                                          ref=current_commit,
                                           baseconfig=self.cfgurl,
                                           makeopts=self.makeopts),
                             None))
